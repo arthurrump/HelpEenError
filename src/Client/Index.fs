@@ -95,17 +95,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
     Bulma.hero [
         hero.isFullHeight
         color.isPrimary
-        prop.style [
-            style.backgroundSize "cover"
-            style.backgroundImageUrl "https://unsplash.it/1200/900?random"
-            style.backgroundPosition "no-repeat center center fixed"
-        ]
         prop.children [
-            Bulma.heroHead [
-                Bulma.navbar [
-                    Bulma.container [ navBrand ]
-                ]
-            ]
             Bulma.heroBody [
                 Bulma.container [
                     Bulma.column [
