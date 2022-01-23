@@ -19,6 +19,7 @@ var CONFIG = {
     // The tags to include the generated JS and CSS will be automatically injected in the HTML template
     // See https://github.com/jantimon/html-webpack-plugin
     indexHtmlTemplate: './src/Client/index.html',
+    cssEntry: './src/Client/style.scss',
     fsharpEntry: './src/Client/output/App.js',
     outputDir: './deploy/public',
     assetsDir: './src/Client/public',
@@ -55,8 +56,11 @@ module.exports = {
     // have a faster HMR support. In production bundle styles together
     // with the code because the MiniCssExtractPlugin will extract the
     // CSS in a separate files.
-    entry: {
-        app: resolve(CONFIG.fsharpEntry)
+    entry: isProduction ?{
+        app: [resolve(CONFIG.fsharpEntry), resolve(CONFIG.cssEntry)]
+    } : {
+        app: resolve(CONFIG.fsharpEntry),
+        style: resolve(CONFIG.cssEntry)
     },
     // Add a hash to the output file name in production
     // to prevent browser caching if code changes
