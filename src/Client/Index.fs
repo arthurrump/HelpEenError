@@ -69,7 +69,7 @@ type Box =
         let children = defaultArg children Seq.empty
         Bulma.box [
             Html.header [
-                spacing.mb5
+                spacing.mb6
                 prop.style [
                     style.height (length.em 1.2)
                     style.position.relative

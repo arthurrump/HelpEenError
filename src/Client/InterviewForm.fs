@@ -97,6 +97,12 @@ let view model onChange onSubmit =
             onSubmit (Fields.toResult model)
         )
         prop.children [
+            Html.p [
+                spacing.mb5
+                prop.text ("Met het invullen van dit logboek help je ons al heel veel, maar we gaan ook graag met een aantal "
+                    + "van jullie in gesprek over de fouten en foutmeldingen die jullie vinden tijdens het programmeren. "
+                    + "Zo'n interview duurt ongeveer 15 minuten en doe je samen met 1 of 2 klasgenoten.")
+            ]
             Form.radio(
                 title = "Wil je meedoen aan een interview?",
                 name = "meedoen",
