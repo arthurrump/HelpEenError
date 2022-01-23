@@ -7,6 +7,9 @@
     <ItemGroup>
         <None Include="index.html" />
         <None Include="paket.references" />
+        <Compile Include="Form.fs" />
+        <Compile Include="DemografischForm.fs" />
+        <Compile Include="InterviewForm.fs" />
         <Compile Include="Index.fs" />
         <Compile Include="App.fs" />
     </ItemGroup>

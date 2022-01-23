@@ -4,13 +4,25 @@ open Elmish
 open Fable.Remoting.Client
 open Shared
 
-type Model = { Todos: Todo list; Input: string }
+type Page =
+    | Algemeen
+    | Demografisch
+    | Interview
+    | Logboek
+
+type Model =
+    { CurrentPage: Page
+      AlgemeenAkkoord: bool
+      DemografischForm: DemografischForm.Fields
+      InterviewForm: InterviewForm.Fields }
 
 type Msg =
-    | GotTodos of Todo list
-    | SetInput of string
-    | AddTodo
-    | AddedTodo of Todo
+    | GotoPage of Page
+    | SetAlgemeenAkkoord of bool
+    | DemografischFormChanged of DemografischForm.Fields
+    | DemografischFormSubmitted of DemografischForm.Fields
+    | InterviewFormChanged of InterviewForm.Fields
+    | InterviewFormSubmitted of InterviewForm.InterviewDeelname
 
 let todosApi =
     Remoting.createApi ()
@@ -18,28 +30,26 @@ let todosApi =
     |> Remoting.buildProxy<ITodosApi>
 
 let init () : Model * Cmd<Msg> =
-    let model = { Todos = []; Input = "" }
-
-    let cmd =
-        Cmd.OfAsync.perform todosApi.getTodos () GotTodos
-
-    model, cmd
+    { CurrentPage = Algemeen
+      AlgemeenAkkoord = false
+      DemografischForm = DemografischForm.init ()
+      InterviewForm = InterviewForm.init () }
+    , Cmd.none
 
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     match msg with
-    | GotTodos todos -> { model with Todos = todos }, Cmd.none
-    | SetInput value -> { model with Input = value }, Cmd.none
-    | AddTodo ->
-        let todo = Todo.create model.Input
-
-        let cmd =
-            Cmd.OfAsync.perform todosApi.addTodo todo AddedTodo
-
-        { model with Input = "" }, cmd
-    | AddedTodo todo ->
-        { model with
-              Todos = model.Todos @ [ todo ] },
-        Cmd.none
+    | GotoPage page ->
+        { model with CurrentPage = page }, Cmd.none
+    | SetAlgemeenAkkoord akkoord ->
+        { model with AlgemeenAkkoord = akkoord }, Cmd.none
+    | DemografischFormChanged form ->
+        { model with DemografischForm = form }, Cmd.none
+    | DemografischFormSubmitted form ->
+        { model with CurrentPage = Interview }, Cmd.none
+    | InterviewFormChanged form ->
+        { model with InterviewForm = form }, Cmd.none
+    | InterviewFormSubmitted form ->
+        { model with CurrentPage = Logboek }, Cmd.none
 
 open Feliz
 open Feliz.Bulma
@@ -47,49 +57,114 @@ open Feliz.Bulma
 let navBrand =
     Bulma.navbarBrand.div [
         Bulma.navbarItem.a [
-            prop.href "https://safe-stack.github.io/"
             navbarItem.isActive
             prop.children [
-                Html.img [
-                    prop.src "/favicon.png"
-                    prop.alt "Logo"
-                ]
+                Html.i [ prop.className "fas fa-cog" ]
             ]
         ]
     ]
 
-let containerBox (model: Model) (dispatch: Msg -> unit) =
-    Bulma.box [
-        Bulma.content [
-            Html.ol [
-                for todo in model.Todos do
-                    Html.li [ prop.text todo.Description ]
-            ]
-        ]
-        Bulma.field.div [
-            field.isGrouped
-            prop.children [
-                Bulma.control.p [
-                    control.isExpanded
-                    prop.children [
-                        Bulma.input.text [
-                            prop.value model.Input
-                            prop.placeholder "What needs to be done?"
-                            prop.onChange (fun x -> SetInput x |> dispatch)
+type Box =
+    static member withHeader (dispatch, ?title: string, ?nOutOfN, ?previousPage, ?children) =
+        let children = defaultArg children Seq.empty
+        Bulma.box [
+            Html.header [
+                spacing.mb5
+                prop.style [
+                    style.height (length.em 1.2)
+                    style.position.relative
+                    style.textAlign.center
+                ]
+                prop.children [
+                    match previousPage with
+                    | None -> ()
+                    | Some previousPage ->
+                        Bulma.button.button [
+                            color.isLight
+                            button.isSmall
+                            prop.onClick (fun _ ->
+                                dispatch (GotoPage previousPage)
+                            )
+                            prop.style [
+                                style.position.absolute
+                                style.top 0
+                                style.left 0
+                            ]
+                            prop.children [
+                                Html.i [ prop.className "fas fa-chevron-left mr-2" ]
+                                Html.text "Vorige"
+                            ]
                         ]
+                    match title with
+                    | None -> ()
+                    | Some title ->
+                        Bulma.title [
+                            size.isSize4
+                            color.hasTextDark
+                            prop.text title
+                        ]
+                    match nOutOfN with
+                    | None -> ()
+                    | Some (n, outOfN) ->
+                        Html.span [
+                            color.hasTextGrey
+                            prop.style [
+                                style.position.absolute
+                                style.top 0
+                                style.right 0
+                            ]
+                            prop.textf "%d / %d" n outOfN
+                        ]
+                ]
+            ]
+            yield! children
+        ]
+
+let algemeenAkkoord (model: Model) (dispatch: Msg -> unit) =
+    Box.withHeader (dispatch, title = "Welkom", nOutOfN = (1, 4), children = [
+        Bulma.content [
+            Bulma.text.p "Amarth aras brith calma caran celeb ech eithel en erin fuin galad gaur glor  hen  idhrin   lalaith lambe lhach  neder nogoth ohtar orna van. Adel aduial aha astaldo avari brethil cabed  ernil esse galen heir heryn hith lambe lenn  nan nar nathron neder nen neth nuquerna raen riel roch thoron. Ampa ast  del glawar gwaith heru hiril  lor mor ranc raw. Ae anor asca caer cennan  en eruanna faroth hith hwesta idhrin lhaw malina naith nim ninn odog paur pethron quesse sigil tad taer tengwa  tri."
+            Bulma.text.p "Alqua ambar aran brith craban dol edhel estel heir iaur lambe lenn maeg nathron orne quesse ranc rhun toloth ungol unque. Aina alqua ampa  emerwen hal herves heryn lebed neled nuin peich rhun ros   unque. Aran condir draug esgal lyg moth nuquerna tehta  torech. Ada dor harad him lim naith ninn nogoth orna ost ross thavron thoron. Aha annon ar cam celeb dor ereg galen gannel  grond  laurina luin naneth quesse rhun. Adel ampa bar celeb erin glin gond gwaith hal heledir idhrin lanc lyg  maethor malina mellon  orna parma ril ruin tavor tehta tol toloth."
+            Bulma.text.p "Adab alph dagor ereg goth harad haudh heryn  im ithil lanc luin minas naith nen peich per riel rochir rond talan   wen. Aear alata alph annon del dor erin falas fenn  glor hathel  lhach lith  menel mereth min orna ranc thalion. Alata fuin hal hen him lenn nar   tathar thoron tol. Ampa dor gwaith hith iaur laurina nai narn  quesse rhun roch tehta thavron. Adel aha anca anto asta astaldo baran bein canad cor   eneg ereg eruanna falf faun heleg lambe lebed lim neder orna ras sereg sigil tad talagand  wen."
+        ]
+        Html.form [
+            prop.onSubmit (fun ev ->
+                ev.preventDefault ()
+                dispatch (GotoPage Demografisch)
+            )
+            prop.children [
+                Bulma.field.div [
+                    Bulma.input.labels.checkbox [
+                        Bulma.input.checkbox [
+                            prop.isChecked model.AlgemeenAkkoord
+                            prop.onChange (SetAlgemeenAkkoord >> dispatch)
+                        ]
+                        Bulma.text.span " Ik ga akkoord"
                     ]
                 ]
-                Bulma.control.p [
-                    Bulma.button.a [
-                        color.isPrimary
-                        prop.disabled (Todo.isValid model.Input |> not)
-                        prop.onClick (fun _ -> dispatch AddTodo)
-                        prop.text "Add"
-                    ]
+                Bulma.button.button [
+                    color.isPrimary
+                    prop.disabled (not model.AlgemeenAkkoord)
+                    prop.text "Verder"
                 ]
             ]
         ]
-    ]
+    ])
+
+let demografisch (model: Model) (dispatch: Msg -> unit) =
+    Box.withHeader (dispatch, title = "Over jou", nOutOfN = (2, 4), previousPage = Algemeen, children = [
+        DemografischForm.view (model.DemografischForm) (DemografischFormChanged >> dispatch) (DemografischFormSubmitted >> dispatch)
+    ])
+
+let interview (model: Model) (dispatch: Msg -> unit) =
+    Box.withHeader (dispatch, title = "Interview?", nOutOfN = (3, 4), previousPage = Demografisch, children = [
+        InterviewForm.view (model.InterviewForm) (InterviewFormChanged >> dispatch) (InterviewFormSubmitted >> dispatch)
+    ])
+
+let logboek (model: Model) (dispatch: Msg -> unit) =
+    Box.withHeader (dispatch, title = "Logboek", nOutOfN = (4, 4), previousPage = Interview, children = [
+        Html.p "Logboek"
+    ])
 
 let view (model: Model) (dispatch: Msg -> unit) =
     Bulma.hero [
@@ -99,16 +174,29 @@ let view (model: Model) (dispatch: Msg -> unit) =
             Bulma.heroBody [
                 Bulma.container [
                     Bulma.column [
-                        column.is6
-                        column.isOffset3
+                        column.is8Desktop
+                        column.isOffset2Desktop
                         prop.children [
                             Bulma.title [
                                 text.hasTextCentered
-                                prop.text "HelpEenError"
+                                prop.text "Help, een error!"
                             ]
-                            containerBox model dispatch
+                            match model.CurrentPage with
+                            | Algemeen ->
+                                algemeenAkkoord model dispatch
+                            | Demografisch ->
+                                demografisch model dispatch
+                            | Interview ->
+                                interview model dispatch
+                            | Logboek ->
+                                logboek model dispatch
                         ]
                     ]
+                ]
+            ]
+            Bulma.heroFoot [
+                Bulma.navbar [
+                    Bulma.container [ navBrand ]
                 ]
             ]
         ]
