@@ -1,100 +1,66 @@
 module InterviewForm
 
-[<RequireQualifiedAccess>]
-type Toestemming =
-    | Alleen
-    | Ouders of email: string
+open Form
+open Elmish
+open Shared.Form
+open Shared.Models
+open Validus
 
-type InterviewContact =
-    { Naam: string
-      Klas: string
-      School: string
-      Email: string
-      Toestemming: Toestemming }
-
-[<RequireQualifiedAccess>]
-type InterviewDeelname =
-    | Ja of InterviewContact
-    | Nee
-
-type Fields =
-    { Meedoen: string
-      Naam: string
-      Klas: string
-      School: string
-      Email: string
-      OuderDan16: string
-      EmailOuders: string }
-
-module Fields =
-    let submittable fields =
-        fields.Meedoen = "nee" ||
-        fields.Meedoen = "ja" &&
-        fields.Naam <> "" &&
-        fields.Klas <> "" &&
-        fields.School <> "" &&
-        fields.Email <> "" &&
-        fields.OuderDan16 <> "" &&
-        (fields.OuderDan16 = "ja" || fields.EmailOuders <> "")
-
-    let toResult fields =
-        if fields.Meedoen = "ja" then
-            InterviewDeelname.Ja
-                { Naam = fields.Naam
-                  Klas = fields.Klas
-                  School = fields.School
-                  Email = fields.Email
-                  Toestemming =
-                    if fields.OuderDan16 = "nee"
-                    then Toestemming.Ouders fields.EmailOuders
-                    else Toestemming.Alleen }
-        else
-            InterviewDeelname.Nee
-
-type Msg =
-    | MeedoenChanged of string
-    | NaamChanged of string
-    | KlasChanged of string
-    | SchoolChanged of string
-    | EmailChanged of string
-    | OuderDan16Changed of string
-    | EmailOudersChanged of string
+type Model =
+    { Form: Interview.Form
+      Errors: string list
+      SubmitDisabled: bool }
 
 let init () =
-    { Meedoen = ""
-      Naam = ""
-      Klas = ""
-      School = ""
-      Email = ""
-      OuderDan16 = ""
-      EmailOuders = "" }
+    { Form = Interview.Form.init ()
+      Errors = []
+      SubmitDisabled = false }
 
-let update msg (model: Fields) =
+type Msg =
+    | Meedoen of Field.Msg<string>
+    | Naam of Field.Msg<string>
+    | Klas of Field.Msg<string>
+    | School of Field.Msg<string>
+    | Email of Field.Msg<string>
+    | OuderDan16 of Field.Msg<string>
+    | EmailOuders of Field.Msg<string>
+    | Submit
+
+let update submit msg (model: Model) =
+    let model = { model with SubmitDisabled = false }
     match msg with
-    | MeedoenChanged meedoen ->
-        { model with Meedoen = meedoen }
-    | NaamChanged naam ->
-        { model with Naam = naam }
-    | KlasChanged klas ->
-        { model with Klas = klas }
-    | SchoolChanged school ->
-        { model with School = school }
-    | EmailChanged email ->
-        { model with Email = email }
-    | OuderDan16Changed jongerDan16 ->
-        { model with OuderDan16 = jongerDan16 }
-    | EmailOudersChanged emailOuders ->
-        { model with EmailOuders = emailOuders }
+    | Meedoen msg ->
+        { model with Form = { model.Form with Meedoen = Field.update msg model.Form.Meedoen } }, Cmd.none
+    | Naam msg ->
+        { model with Form = { model.Form with Naam = Field.update msg model.Form.Naam } }, Cmd.none
+    | Klas msg ->
+        { model with Form = { model.Form with Klas = Field.update msg model.Form.Klas } }, Cmd.none
+    | School msg ->
+        { model with Form = { model.Form with School = Field.update msg model.Form.School } }, Cmd.none
+    | Email msg ->
+        { model with Form = { model.Form with Email = Field.update msg model.Form.Email } }, Cmd.none
+    | OuderDan16 msg ->
+        { model with Form = { model.Form with OuderDan16 = Field.update msg model.Form.OuderDan16 } }, Cmd.none
+    | EmailOuders msg ->
+        { model with Form = { model.Form with EmailOuders = Field.update msg model.Form.EmailOuders } }, Cmd.none
+    | Submit ->
+        let model = { model with Form = Interview.Form.validateAll model.Form }
+        match Interview.Validate.form model.Form with
+        | Ok result ->
+            { model with Errors = [] }, Cmd.ofMsg (submit result)
+        | Error err ->
+            { model with
+                SubmitDisabled = true
+                Errors = err |> ValidationErrors.toList }, Cmd.none
 
 open Feliz
 open Feliz.Bulma
-open FormHelpers
 
-let view model onChange onSubmit =
+let view (model: Model) dispatch =
     Html.form [
         prop.onSubmit (fun ev ->
             ev.preventDefault ()
-            onSubmit (Fields.toResult model)
+            dispatch Submit
         )
         prop.children [
             Html.p [
@@ -107,9 +73,9 @@ let view model onChange onSubmit =
                 title = "Wil je meedoen aan een interview?",
                 name = "meedoen",
                 options = [ "ja", "Ja"; "nee", "Nee" ],
-                selected = model.Meedoen,
-                update = fun meedoen -> onChange (update (MeedoenChanged meedoen) model))
-            if model.Meedoen = "ja" then
+                field = model.Form.Meedoen,
+                dispatch = (Meedoen >> dispatch))
+            if model.Form.Meedoen.Value = Some "ja" then
                 Html.p [
                     spacing.mb5
                     prop.text ("Wat leuk dat je mee wilt doen! Vul hieronder je gegevens in, zodat we contact met je op kunnen nemen. "
@@ -117,8 +83,8 @@ let view model onChange onSubmit =
                 ]
                 Form.textbox(
                     title = "Hoe heet je?",
-                    value = model.Naam,
-                    update = fun naam -> onChange (update (NaamChanged naam) model))
+                    field = model.Form.Naam,
+                    dispatch = (Naam >> dispatch))
                 Form.textbox(
                     title = "In welke klas zit je?",
                     explainer = [
@@ -127,35 +93,48 @@ let view model onChange onSubmit =
                             prop.text "Dan zorgen we dat je samen met een klasgenoot wordt uitgenodigd."
                         ]
                     ],
-                    value = model.Klas,
-                    update = fun klas -> onChange (update (KlasChanged klas) model))
+                    field = model.Form.Klas,
+                    dispatch = (Klas >> dispatch))
                 Form.textbox(
                     title = "Op welke school zit je?",
-                    value = model.School,
-                    update = fun school -> onChange (update (SchoolChanged school) model))
+                    field = model.Form.School,
+                    dispatch = (School >> dispatch))
                 Form.textbox(
                     title = "Wat is je emailadres?",
-                    value = model.Email,
-                    update = fun email -> onChange (update (EmailChanged email) model))
+                    field = model.Form.Email,
+                    dispatch = (Email >> dispatch))
                 Form.radio(
                     title = "Ben je 16 jaar of ouder?",
                     name = "jongerdan16",
                     options = [ "ja", "Ja"; "nee", "Nee" ],
-                    selected = model.OuderDan16,
-                    update = fun ouderDan16 -> onChange (update (OuderDan16Changed ouderDan16) model))
-                if model.OuderDan16 = "nee" then
+                    field = model.Form.OuderDan16,
+                    dispatch = (OuderDan16 >> dispatch))
+                if model.Form.OuderDan16.Value = Some "nee" then
                     Html.p [
                         spacing.mb5
                         prop.text "Omdat je nog geen 16 bent, moeten je ouders ook toestemming geven om mee te doen aan een interview. Vul hieronder het emailadres van een van je ouders in."
                     ]
                     Form.textbox(
                         title = "Emailadres van een van je ouders",
-                        value = model.EmailOuders,
-                        update = fun email -> onChange (update (EmailOudersChanged email) model))
+                        field = model.Form.EmailOuders,
+                        dispatch = (EmailOuders >> dispatch))
             Bulma.button.button [
                 color.isPrimary
-                prop.disabled (not (Fields.submittable model))
+                prop.disabled model.SubmitDisabled
                 prop.text "Verder"
             ]
+            if not (List.isEmpty model.Errors) then
+                Bulma.notification [
+                    color.isDanger
+                    spacing.mt5
+                    prop.children [
+                        Html.ul [
+                            for error in model.Errors |> Seq.rev ->
+                                Html.li [
+                                    prop.text error
+                                ]
+                        ]
+                    ]
+                ]
         ]
     ]

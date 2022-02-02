@@ -14,15 +14,15 @@ type Model =
     { CurrentPage: Page
       AlgemeenAkkoord: bool
       DemografischForm: DemografischForm.Model
-      InterviewForm: InterviewForm.Fields }
+      InterviewForm: InterviewForm.Model }
 
 type Msg =
     | GotoPage of Page
     | SetAlgemeenAkkoord of bool
     | DemografischUpdated of DemografischForm.Msg
     | DemografischSubmitted of Demografisch.Result
-    | InterviewFormChanged of InterviewForm.Fields
-    | InterviewFormSubmitted of InterviewForm.InterviewDeelname
+    | InterviewUpdated of InterviewForm.Msg
+    | InterviewSubmitted of Interview.Result
 
 let todosApi =
     Remoting.createApi ()
@@ -47,9 +47,10 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         { model with DemografischForm = form }, cmd
     | DemografischSubmitted result ->
         { model with CurrentPage = Interview }, Cmd.none
-    | InterviewFormChanged form ->
-        { model with InterviewForm = form }, Cmd.none
-    | InterviewFormSubmitted form ->
+    | InterviewUpdated msg ->
+        let form, cmd = InterviewForm.update InterviewSubmitted msg model.InterviewForm
+        { model with InterviewForm = form }, cmd
+    | InterviewSubmitted result ->
         { model with CurrentPage = Logboek }, Cmd.none
 
 open Feliz
@@ -159,7 +160,7 @@ let demografisch (model: Model) (dispatch: Msg -> unit) =
 
 let interview (model: Model) (dispatch: Msg -> unit) =
     Box.withHeader (dispatch, title = "Interview?", nOutOfN = (3, 4), previousPage = Demografisch, children = [
-        InterviewForm.view (model.InterviewForm) (InterviewFormChanged >> dispatch) (InterviewFormSubmitted >> dispatch)
+        InterviewForm.view (model.InterviewForm) (InterviewUpdated >> dispatch)
     ])
 
 let logboek (model: Model) (dispatch: Msg -> unit) =

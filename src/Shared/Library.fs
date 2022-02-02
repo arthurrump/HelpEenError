@@ -19,12 +19,22 @@ module Result =
 
 module Validators =
     open Validus
+
+    let required validator message field value =
+        match value with
+        | Some v -> validator field v
+        | None -> Error (ValidationErrors.create field [ message field ])
+
     module NL =
         let required validator =
-            Validators.required validator (sprintf "%s is een verplicht veld.")
+            required validator (sprintf "%s is een verplicht veld.")
 
         let likert =
             Validators.Int.between 1 5 (sprintf "%s moet tussen 1 en 5 zijn.")
+
+    module String =
+        let contains (substr: string) msg =
+            Validator.create msg (fun (str: string) -> str.Contains substr)
 
 module ValidationResult =
     open Validus
