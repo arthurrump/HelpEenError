@@ -25,3 +25,4 @@ nuget Fake.IO.FileSystem
 nuget Farmer
 nuget SQLitePCLRaw.bundle_e_sqlcipher
 nuget System.Data.Sqlite.Core
+nuget Validus

@@ -2,7 +2,7 @@ module Index
 
 open Elmish
 open Fable.Remoting.Client
-open Shared
+open Shared.Models
 
 type Page =
     | Algemeen
@@ -13,14 +13,14 @@ type Page =
 type Model =
     { CurrentPage: Page
       AlgemeenAkkoord: bool
-      DemografischForm: DemografischForm.Fields
+      DemografischForm: DemografischForm.Model
       InterviewForm: InterviewForm.Fields }
 
 type Msg =
     | GotoPage of Page
     | SetAlgemeenAkkoord of bool
-    | DemografischFormChanged of DemografischForm.Fields
-    | DemografischFormSubmitted of DemografischForm.Fields
+    | DemografischUpdated of DemografischForm.Msg
+    | DemografischSubmitted of Demografisch.Result
     | InterviewFormChanged of InterviewForm.Fields
     | InterviewFormSubmitted of InterviewForm.InterviewDeelname
 
@@ -42,9 +42,10 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         { model with CurrentPage = page }, Cmd.none
     | SetAlgemeenAkkoord akkoord ->
         { model with AlgemeenAkkoord = akkoord }, Cmd.none
-    | DemografischFormChanged form ->
-        { model with DemografischForm = form }, Cmd.none
-    | DemografischFormSubmitted form ->
+    | DemografischUpdated msg ->
+        let form, cmd = DemografischForm.update DemografischSubmitted msg model.DemografischForm
+        { model with DemografischForm = form }, cmd
+    | DemografischSubmitted result ->
         { model with CurrentPage = Interview }, Cmd.none
     | InterviewFormChanged form ->
         { model with InterviewForm = form }, Cmd.none
@@ -153,7 +154,7 @@ let algemeenAkkoord (model: Model) (dispatch: Msg -> unit) =
 
 let demografisch (model: Model) (dispatch: Msg -> unit) =
     Box.withHeader (dispatch, title = "Over jou", nOutOfN = (2, 4), previousPage = Algemeen, children = [
-        DemografischForm.view (model.DemografischForm) (DemografischFormChanged >> dispatch) (DemografischFormSubmitted >> dispatch)
+        DemografischForm.view (model.DemografischForm) (DemografischUpdated >> dispatch)
     ])
 
 let interview (model: Model) (dispatch: Msg -> unit) =

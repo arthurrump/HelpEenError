@@ -1,7 +1,16 @@
-module FormHelpers
+module Form
 
 open Feliz
 open Feliz.Bulma
+
+open Shared.Form
+
+let private showError field =
+    match field.Error with
+    | Some error ->
+        [ Bulma.help [ color.isDanger; prop.text error ] ]
+    | None ->
+        []
 
 type Form =
     static member titleDiv(
@@ -18,26 +27,29 @@ type Form =
         ]
 
     static member textbox(
-            value: string,
-            update: string -> unit,
+            field: Field<string, 'tres>,
+            dispatch: Field.Msg<string> -> unit,
             ?title: string,
             ?explainer: seq<Fable.React.ReactElement>,
             ?placeholder: string) =
         Form.titleDiv(?title = title, ?explainer = explainer, children = [
             Bulma.control.div [
                 Bulma.input.text [
+                    if Option.isSome field.Error then color.isDanger
                     prop.placeholder (defaultArg placeholder "")
-                    prop.value value
-                    prop.onTextChange update
+                    prop.value (Option.defaultValue "" field.Value)
+                    prop.onTextChange (Field.Update >> dispatch)
+                    prop.onBlur (fun _ -> dispatch Field.Validate)
                 ]
             ]
+            yield! showError field
         ])
 
     static member radio(
             name: string,
             options: (string * string) list,
-            selected: string,
-            update: string -> unit,
+            field: Field<string, 'tres>,
+            dispatch: Field.Msg<string> -> unit,
             ?title: string,
             ?explainer: seq<Fable.React.ReactElement>) =
         Form.titleDiv(?title = title, ?explainer = explainer, children = [
@@ -48,20 +60,23 @@ type Form =
                             Bulma.input.radio [
                                 prop.name name
                                 prop.value value
-                                prop.isChecked ((selected = value))
-                                prop.onCheckedChange (fun ch -> if ch then update value)
+                                prop.isChecked ((field.Value = Some value))
+                                prop.onCheckedChange (fun ch ->
+                                    if ch then dispatch (Field.Update value))
+                                prop.onBlur (fun _ -> dispatch Field.Validate)
                                 spacing.mr2
                             ]
                             Html.text item
                         ]
                     ]
             ]
+            yield! showError field
         ])
 
     static member likert(
             name: string,
-            value: int,
-            update: int -> unit,
+            field: Field<int, 'tres>,
+            dispatch: Field.Msg<int> -> unit,
             ?title: string,
             ?explainer: seq<Fable.React.ReactElement>,
             ?left: string,
@@ -110,9 +125,11 @@ type Form =
                         Bulma.input.radio [
                             prop.name name
                             prop.value i
-                            prop.isChecked ((value = i))
-                            prop.onCheckedChange (fun ch -> if ch then update i)
+                            prop.isChecked ((field.Value = Some i))
+                            prop.onCheckedChange (fun ch -> if ch then dispatch (Field.Update i))
+                            prop.onBlur (fun _ -> dispatch Field.Validate)
                         ]
                 ]
             ]
+            yield! showError field
         ])
