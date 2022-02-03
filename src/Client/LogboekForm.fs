@@ -1,80 +1,86 @@
 module LogboekForm
 
-open Form
-open Elmish
-open Shared.Form
-open Shared.Models
-open Validus
-
-type Model =
-    { Form: Logboek.Form
-      Errors: string list
-      SubmitDisabled: bool }
-
-type Msg =
-    | Type of Field.Msg<string>
-    | FoutmeldingMelding of Field.Msg<string>
-    | OnverwachtGedragBeschrijving of Field.Msg<string>
-    | OnverwachtGedragVerwachting of Field.Msg<string>
-    | Vervolgactie of Field.Msg<string>
-    | Submit
-
-let init () : Model =
-    { Form = Logboek.Form.init ()
-      Errors = []
-      SubmitDisabled = false }
-
-let update submit msg (model: Model) =
-    let model = { model with SubmitDisabled = false }
-    match msg with
-    | Type msg ->
-        { model with Form = { model.Form with Type = Field.update msg model.Form.Type } }, Cmd.none
-    | FoutmeldingMelding msg ->
-        { model with Form = { model.Form with FoutmeldingMelding = Field.update msg model.Form.FoutmeldingMelding } }, Cmd.none
-    | OnverwachtGedragBeschrijving msg ->
-        { model with Form = { model.Form with OnverwachtGedragBeschrijving = Field.update msg model.Form.OnverwachtGedragBeschrijving } }, Cmd.none
-    | OnverwachtGedragVerwachting msg ->
-        { model with Form = { model.Form with OnverwachtGedragVerwachting = Field.update msg model.Form.OnverwachtGedragVerwachting } }, Cmd.none
-    | Vervolgactie msg ->
-        { model with Form = { model.Form with Vervolgactie = Field.update msg model.Form.Vervolgactie } }, Cmd.none
-    | Submit ->
-        let model = { model with Form = Logboek.Form.validateAll model.Form }
-        match Logboek.Validate.form model.Form with
-        | Ok result ->
-            { model with Errors = [] }, Cmd.ofMsg (submit result)
-        | Error err ->
-            { model with
-                SubmitDisabled = true
-                Errors = err |> ValidationErrors.toList }, Cmd.none
-
 open Feliz
 open Feliz.Bulma
+open Form
+open Shared.Form
+open Shared.Library
+open Shared.Models
+
+module Internal =
+    type Model = Logboek.Form
+
+    type Msg =
+        | Type of Field.Msg<string>
+        | FoutmeldingMelding of Field.Msg<string>
+        | OnverwachtGedragBeschrijving of Field.Msg<string>
+        | OnverwachtGedragVerwachting of Field.Msg<string>
+        | Vervolgactie of Field.Msg<string>
+
+    let init () =
+        Logboek.Form.init ()
+
+    let update msg (model: Model) =
+        match msg with
+        | Type msg ->
+            { model with Type = Field.update msg model.Type }
+        | FoutmeldingMelding msg ->
+            { model with FoutmeldingMelding = Field.update msg model.FoutmeldingMelding }
+        | OnverwachtGedragBeschrijving msg ->
+            { model with OnverwachtGedragBeschrijving = Field.update msg model.OnverwachtGedragBeschrijving }
+        | OnverwachtGedragVerwachting msg ->
+            { model with OnverwachtGedragVerwachting = Field.update msg model.OnverwachtGedragVerwachting }
+        | Vervolgactie msg ->
+            { model with Vervolgactie = Field.update msg model.Vervolgactie }
+
+    let form =
+        { SubmitButton = "Toevoegen"
+          NextButton = None
+          CancelButton = Some "Annuleren"
+          Update = update
+          Validate = Logboek.Validate.form
+          ValidateAllFields = Logboek.Form.validateAll
+          Submit = fun _ -> async { return Ok () } } // TODO
+
+    let view (model: Model) (dispatch: Msg -> unit) = [
+        Form.UI.radio(
+            title = "Wat gaat er mis?",
+            name = "type",
+            options =
+                [ "foutmelding", "Ik krijg een foutmelding"
+                  "onverwacht-gedrag", "Het programma werkt niet zoals ik verwacht had" ],
+            field = model.Type,
+            dispatch = (Type >> dispatch))
+        if model.Type.Value = Some "foutmelding" then
+            Form.UI.textarea (
+                title = "Wat is de foutmelding?",
+                field = model.FoutmeldingMelding,
+                dispatch = (FoutmeldingMelding >> dispatch))
+        if model.Type.Value = Some "onverwacht-gedrag" then
+            Form.UI.textarea(
+                title = "Wat verwachtte je dat het programma zou doen?",
+                field = model.OnverwachtGedragVerwachting,
+                dispatch = (OnverwachtGedragVerwachting >> dispatch))
+            Form.UI.textarea(
+                title = "Wat doet het programma?",
+                field = model.OnverwachtGedragBeschrijving,
+                dispatch = (OnverwachtGedragBeschrijving >> dispatch))
+        if Field.validate model.Type |> Result.isOk then
+            Form.UI.textarea(
+                title = "Wat ga je doen om de fout op te lossen?",
+                field = model.Vervolgactie,
+                dispatch = (Vervolgactie >> dispatch))
+    ]
+
+type Model = Form.Model<Internal.Model>
+type Msg = Form.Msg<Internal.Msg, Logboek.Result, unit>
+type ReturnMsg = Form.ReturnMsg<Logboek.Result, unit>
+
+let init () : Model =
+    Form.init Internal.init
+
+let update (returnMsg, formMsg) (msg: Msg) (model: Model) =
+    Form.update Internal.form returnMsg formMsg msg model
 
 let view (model: Model) (dispatch: Msg -> unit) =
-    Html.form [
-        prop.onSubmit (fun ev ->
-            ev.preventDefault ()
-            dispatch Submit
-        )
-        prop.children [
-
-            Bulma.button.button [
-                color.isPrimary
-                prop.disabled model.SubmitDisabled
-                prop.text "Verder"
-            ]
-            if not (List.isEmpty model.Errors) then
-                Bulma.notification [
-                    color.isDanger
-                    spacing.mt5
-                    prop.children [
-                        Html.ul [
-                            for error in model.Errors |> Seq.rev ->
-                                Html.li [
-                                    prop.text error
-                                ]
-                        ]
-                    ]
-                ]
-        ]
-    ]
+    Form.view Internal.form model dispatch Internal.view

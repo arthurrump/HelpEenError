@@ -5,11 +5,24 @@ open Shared.Library
 
 type Validator<'t, 'tres> = string -> 't option -> Result<'tres, ValidationErrors>
 
-type Field<'t, 'tres> =
+[<CustomEquality; NoComparison>]
+type Field<'t, 'tres when 't : equality> =
     { Name: string
       Value: 't option
       Error: string option
       Validator: Validator<'t, 'tres> }
+
+    override this.GetHashCode () =
+        hash (this.Name, this.Value, this.Error)
+
+    override this.Equals (that: obj) =
+        match that with
+        | :? Field<'t, 'tres> as that ->
+            this.Name = that.Name &&
+            this.Value = that.Value &&
+            this.Error = that.Error
+        | _ ->
+            false
 
 module Field =
     let init (name, validator) =

@@ -8,6 +8,7 @@
         <None Include="index.html" />
         <None Include="paket.references" />
         <Compile Include="Form.fs" />
+        <Compile Include="ToestemmingForm.fs" />
         <Compile Include="DemografischForm.fs" />
         <Compile Include="InterviewForm.fs" />
         <Compile Include="LogboekForm.fs" />

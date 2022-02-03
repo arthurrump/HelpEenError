@@ -1,6 +1,7 @@
 module Index
 
 open Elmish
+open Form
 open Fable.Remoting.Client
 open Shared.Models
 
@@ -12,20 +13,25 @@ type Page =
 
 type Model =
     { CurrentPage: Page
-      AlgemeenAkkoord: bool
+      AlgemeneToestemming: bool
+      ToestemmingForm: ToestemmingForm.Model
       DemografischForm: DemografischForm.Model
+      DemografischeGegevens: Demografisch.Result option
       InterviewForm: InterviewForm.Model
-      LogboekForm: LogboekForm.Model }
+      LogboekForm: LogboekForm.Model
+      Logboek: Logboek.Result list }
 
 type Msg =
     | GotoPage of Page
-    | SetAlgemeenAkkoord of bool
-    | DemografischUpdated of DemografischForm.Msg
-    | DemografischSubmitted of Demografisch.Result
-    | InterviewUpdated of InterviewForm.Msg
-    | InterviewSubmitted of Interview.Result
-    | LogboekUpdated of LogboekForm.Msg
-    | LogboekSubmitted of Logboek.Result
+    | ToestemmingFormInternal of ToestemmingForm.Msg
+    | ToestemmingFormReturn of ToestemmingForm.ReturnMsg
+    | DemografischFormInternal of DemografischForm.Msg
+    | DemografischFormReturn of DemografischForm.ReturnMsg
+    | InterviewFormInternal of InterviewForm.Msg
+    | InterviewFormReturn of InterviewForm.ReturnMsg
+    | LogboekFormInternal of LogboekForm.Msg
+    | LogboekFormReturn of LogboekForm.ReturnMsg
+
 
 // let todosApi =
 //     Remoting.createApi ()
@@ -34,46 +40,59 @@ type Msg =
 
 let init () : Model * Cmd<Msg> =
     { CurrentPage = Algemeen
-      AlgemeenAkkoord = false
+      AlgemeneToestemming = false
+      ToestemmingForm = ToestemmingForm.init ()
       DemografischForm = DemografischForm.init ()
+      DemografischeGegevens = None
       InterviewForm = InterviewForm.init ()
-      LogboekForm = LogboekForm.init () }
+      LogboekForm = LogboekForm.init ()
+      Logboek = [] }
     , Cmd.none
 
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     match msg with
     | GotoPage page ->
         { model with CurrentPage = page }, Cmd.none
-    | SetAlgemeenAkkoord akkoord ->
-        { model with AlgemeenAkkoord = akkoord }, Cmd.none
-    | DemografischUpdated msg ->
-        let form, cmd = DemografischForm.update DemografischSubmitted msg model.DemografischForm
+
+    | ToestemmingFormInternal msg ->
+        let form, cmd = ToestemmingForm.update (ToestemmingFormReturn, ToestemmingFormInternal) msg model.ToestemmingForm
+        { model with ToestemmingForm = form }, cmd
+    | ToestemmingFormReturn Form.Next ->
+        // TODO: Depends on whether we got permission or not
+        { model with CurrentPage = Demografisch }, Cmd.none
+    | ToestemmingFormReturn (Form.Submitted (result, response)) ->
+        // TODO: Response is some token, store for use with other methods
+        // TODO: React if the person retracted permission, somehow identify from response
+        { model with AlgemeneToestemming = result }, Cmd.none
+
+    | DemografischFormInternal msg ->
+        let form, cmd = DemografischForm.update (DemografischFormReturn, DemografischFormInternal) msg model.DemografischForm
         { model with DemografischForm = form }, cmd
-    | DemografischSubmitted result ->
+    | DemografischFormReturn Form.Next ->
         { model with CurrentPage = Interview }, Cmd.none
-    | InterviewUpdated msg ->
-        let form, cmd = InterviewForm.update InterviewSubmitted msg model.InterviewForm
+    | DemografischFormReturn (Form.Submitted (result, _)) ->
+        { model with DemografischeGegevens = Some result }, Cmd.none
+
+    | InterviewFormInternal msg ->
+        let form, cmd = InterviewForm.update (InterviewFormReturn, InterviewFormInternal) msg model.InterviewForm
         { model with InterviewForm = form }, cmd
-    | InterviewSubmitted result ->
+    | InterviewFormReturn Form.Next ->
         { model with CurrentPage = Logboek }, Cmd.none
-    | LogboekUpdated msg ->
-        let form, cmd = LogboekForm.update LogboekSubmitted msg model.LogboekForm
+    | InterviewFormReturn (Form.Submitted (_, _)) ->
+        model, Cmd.none
+
+    | LogboekFormInternal msg ->
+        let form, cmd = LogboekForm.update (LogboekFormReturn, LogboekFormInternal) msg model.LogboekForm
         { model with LogboekForm = form }, cmd
-    | LogboekSubmitted result ->
-        { model with LogboekForm = LogboekForm.init () }, Cmd.none
+    | LogboekFormReturn Form.Next ->
+        model, Cmd.none
+    | LogboekFormReturn (Form.Submitted (result, _)) ->
+        { model with
+            Logboek = result :: model.Logboek
+            LogboekForm = LogboekForm.init () }, Cmd.none
 
 open Feliz
 open Feliz.Bulma
-
-let navBrand =
-    Bulma.navbarBrand.div [
-        Bulma.navbarItem.a [
-            navbarItem.isActive
-            prop.children [
-                Html.i [ prop.className "fas fa-cog" ]
-            ]
-        ]
-    ]
 
 type Box =
     static member withHeader (dispatch, ?title: string, ?nOutOfN, ?previousPage, ?children) =
@@ -138,43 +157,22 @@ let algemeenAkkoord (model: Model) (dispatch: Msg -> unit) =
             Bulma.text.p "Alqua ambar aran brith craban dol edhel estel heir iaur lambe lenn maeg nathron orne quesse ranc rhun toloth ungol unque. Aina alqua ampa  emerwen hal herves heryn lebed neled nuin peich rhun ros   unque. Aran condir draug esgal lyg moth nuquerna tehta  torech. Ada dor harad him lim naith ninn nogoth orna ost ross thavron thoron. Aha annon ar cam celeb dor ereg galen gannel  grond  laurina luin naneth quesse rhun. Adel ampa bar celeb erin glin gond gwaith hal heledir idhrin lanc lyg  maethor malina mellon  orna parma ril ruin tavor tehta tol toloth."
             Bulma.text.p "Adab alph dagor ereg goth harad haudh heryn  im ithil lanc luin minas naith nen peich per riel rochir rond talan   wen. Aear alata alph annon del dor erin falas fenn  glor hathel  lhach lith  menel mereth min orna ranc thalion. Alata fuin hal hen him lenn nar   tathar thoron tol. Ampa dor gwaith hith iaur laurina nai narn  quesse rhun roch tehta thavron. Adel aha anca anto asta astaldo baran bein canad cor   eneg ereg eruanna falf faun heleg lambe lebed lim neder orna ras sereg sigil tad talagand  wen."
         ]
-        Html.form [
-            prop.onSubmit (fun ev ->
-                ev.preventDefault ()
-                dispatch (GotoPage Demografisch)
-            )
-            prop.children [
-                Bulma.field.div [
-                    Bulma.input.labels.checkbox [
-                        Bulma.input.checkbox [
-                            prop.isChecked model.AlgemeenAkkoord
-                            prop.onChange (SetAlgemeenAkkoord >> dispatch)
-                        ]
-                        Bulma.text.span " Ik ga akkoord"
-                    ]
-                ]
-                Bulma.button.button [
-                    color.isPrimary
-                    prop.disabled (not model.AlgemeenAkkoord)
-                    prop.text "Verder"
-                ]
-            ]
-        ]
+        ToestemmingForm.view (model.ToestemmingForm) (ToestemmingFormInternal >> dispatch)
     ])
 
 let demografisch (model: Model) (dispatch: Msg -> unit) =
     Box.withHeader (dispatch, title = "Over jou", nOutOfN = (2, 4), previousPage = Algemeen, children = [
-        DemografischForm.view (model.DemografischForm) (DemografischUpdated >> dispatch)
+        DemografischForm.view (model.DemografischForm) (DemografischFormInternal >> dispatch)
     ])
 
 let interview (model: Model) (dispatch: Msg -> unit) =
     Box.withHeader (dispatch, title = "Interview?", nOutOfN = (3, 4), previousPage = Demografisch, children = [
-        InterviewForm.view (model.InterviewForm) (InterviewUpdated >> dispatch)
+        InterviewForm.view (model.InterviewForm) (InterviewFormInternal >> dispatch)
     ])
 
 let logboek (model: Model) (dispatch: Msg -> unit) =
     Box.withHeader (dispatch, title = "Logboek", nOutOfN = (4, 4), previousPage = Interview, children = [
-        LogboekForm.view (model.LogboekForm) (LogboekUpdated >> dispatch)
+        LogboekForm.view (model.LogboekForm) (LogboekFormInternal >> dispatch)
     ])
 
 let view (model: Model) (dispatch: Msg -> unit) =
@@ -203,11 +201,6 @@ let view (model: Model) (dispatch: Msg -> unit) =
                                 logboek model dispatch
                         ]
                     ]
-                ]
-            ]
-            Bulma.heroFoot [
-                Bulma.navbar [
-                    Bulma.container [ navBrand ]
                 ]
             ]
         ]
