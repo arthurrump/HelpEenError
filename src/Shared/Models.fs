@@ -1,9 +1,22 @@
 namespace Shared.Models
 
-open System
 open Validus
 open Shared.Form
 open Shared.Library
+
+module Validate =
+    open Validus.Operators
+    let jaNee = fun field value ->
+        if value = "ja" then Ok true
+        else if value = "nee" then Ok false
+        else Error (ValidationErrors.create field [ $"%s{field} moet 'ja' of 'nee' zijn." ])
+    let email =
+        Validators.String.betweenLen 8 512
+            (sprintf "%s moet tussen de 8 en 512 tekens lang zijn.")
+        <+> Validators.String.contains "@"
+            (sprintf "%s moet een geldig emailadres zijn.")
+    let nietLeeg =
+        Validators.String.notEmpty (sprintf "%s mag niet leeg zijn.")
 
 module Demografisch =
     type Form =
@@ -88,18 +101,6 @@ module Interview =
 
     [<RequireQualifiedAccess>]
     module Validate =
-        open Validus.Operators
-        let jaNee = fun field value ->
-            if value = "ja" then Ok true
-            else if value = "nee" then Ok false
-            else Error (ValidationErrors.create field [ $"%s{field} moet 'ja' of 'nee' zijn." ])
-        let email =
-            Validators.String.betweenLen 8 512
-                (sprintf "%s moet tussen de 8 en 512 tekens lang zijn.")
-            <+> Validators.String.contains "@"
-                (sprintf "%s moet een geldig emailadres zijn.")
-        let nietLeeg =
-            Validators.String.notEmpty (sprintf "%s mag niet leeg zijn.")
         let form (m: Form) =
             validate {
                 let! meedoen = Field.validate m.Meedoen
@@ -134,15 +135,15 @@ module Interview =
                 | Toestemming.Alleen ->
                     return Toestemming.Alleen
                 | Toestemming.Ouders emailOuders ->
-                    let! email = email "Email Ouders" emailOuders
+                    let! email = Validate.email "Email Ouders" emailOuders
                     return Toestemming.Ouders email
             }
         let contact (m: Contact) =
             validate {
-                let! naam = nietLeeg "Naam" m.Naam
-                and! klas = nietLeeg "Klas" m.Klas
-                and! school = nietLeeg "School" m.School
-                and! email = email "Email" m.Email
+                let! naam = Validate.nietLeeg "Naam" m.Naam
+                and! klas = Validate.nietLeeg "Klas" m.Klas
+                and! school = Validate.nietLeeg "School" m.School
+                and! email = Validate.email "Email" m.Email
                 and! toestemming = toestemming m.Toestemming
                 return
                     { Naam = naam
@@ -188,20 +189,70 @@ module Interview =
                 OuderDan16 = Field.update Field.Validate form.OuderDan16
                 EmailOuders = Field.update Field.Validate form.EmailOuders }
 
-type Todo = { Id: Guid; Description: string }
+module Logboek =
+    type Form =
+        { Type: Field<string, string> // Foutmelding, OnverwachtGedrag
+          FoutmeldingMelding: Field<string, string>
+          OnverwachtGedragBeschrijving: Field<string, string>
+          OnverwachtGedragVerwachting: Field<string, string>
+          Vervolgactie: Field<string, string> }
 
-module Todo =
-    let isValid (description: string) =
-        String.IsNullOrWhiteSpace description |> not
+    type Result =
+        | Foutmelding of melding: string * vervolgactie: string
+        | OnverwachtGedrag of beschrijving: string * verwachting: string * vervolgactie: string
 
-    let create (description: string) =
-        { Id = Guid.NewGuid()
-          Description = description }
+    [<RequireQualifiedAccess>]
+    module Validate =
+        let type' =
+            Validator.create
+                (sprintf "%s moet 'foutmelding' of 'onverwacht-gedrag' zijn.")
+                (fun sn -> sn = "foutmelding" || sn = "onverwacht-gedrag")
+        let form (m: Form) =
+            validate {
+                let! t = Field.validate m.Type
+                if t = "foutmelding" then
+                    let! melding = Field.validate m.FoutmeldingMelding
+                    let! vervolgactie = Field.validate m.Vervolgactie
+                    return Foutmelding (melding, vervolgactie)
+                else
+                    let! beschrijving = Field.validate m.OnverwachtGedragBeschrijving
+                    let! verwachting = Field.validate m.OnverwachtGedragVerwachting
+                    let! vervolgactie = Field.validate m.Vervolgactie
+                    return OnverwachtGedrag (beschrijving, verwachting, vervolgactie)
+            }
+        let result (m: Result) =
+            match m with
+            | Foutmelding (melding, vervolgactie) ->
+                validate {
+                    let! melding = Validate.nietLeeg "Foutmelding" melding
+                    let! vervolgactie = Validate.nietLeeg "Vervolgactie" vervolgactie
+                    return Foutmelding (melding, vervolgactie)
+                }
+            | OnverwachtGedrag (beschrijving, verwachting, vervolgactie) ->
+                validate {
+                    let! beschrijving = Validate.nietLeeg "Beschrijving" beschrijving
+                    let! verwachting = Validate.nietLeeg "Verwachting" verwachting
+                    let! vervolgactie = Validate.nietLeeg "Vervolgactie" vervolgactie
+                    return OnverwachtGedrag (beschrijving, verwachting, vervolgactie)
+                }
 
-module Route =
-    let builder typeName methodName =
-        sprintf "/api/%s/%s" typeName methodName
+    module Form =
+        let init () : Form =
+            { Type =
+                Field.init ("Type", Validators.NL.required Validate.type')
+              FoutmeldingMelding =
+                Field.init ("Foutmelding", Validators.NL.required Validate.nietLeeg)
+              OnverwachtGedragBeschrijving =
+                Field.init ("Beschrijving", Validators.NL.required Validate.nietLeeg)
+              OnverwachtGedragVerwachting =
+                Field.init ("Verwachting", Validators.NL.required Validate.nietLeeg)
+              Vervolgactie =
+                Field.init ("Vervolgactie", Validators.NL.required Validate.nietLeeg) }
 
-type ITodosApi =
-    { getTodos: unit -> Async<Todo list>
-      addTodo: Todo -> Async<Todo> }
+        let validateAll (form: Form) =
+            { form with
+                Type = Field.update Field.Validate form.Type
+                FoutmeldingMelding = Field.update Field.Validate form.FoutmeldingMelding
+                OnverwachtGedragBeschrijving = Field.update Field.Validate form.OnverwachtGedragBeschrijving
+                OnverwachtGedragVerwachting = Field.update Field.Validate form.OnverwachtGedragVerwachting
+                Vervolgactie = Field.update Field.Validate form.Vervolgactie }

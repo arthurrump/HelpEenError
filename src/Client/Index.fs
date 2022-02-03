@@ -14,7 +14,8 @@ type Model =
     { CurrentPage: Page
       AlgemeenAkkoord: bool
       DemografischForm: DemografischForm.Model
-      InterviewForm: InterviewForm.Model }
+      InterviewForm: InterviewForm.Model
+      LogboekForm: LogboekForm.Model }
 
 type Msg =
     | GotoPage of Page
@@ -23,17 +24,20 @@ type Msg =
     | DemografischSubmitted of Demografisch.Result
     | InterviewUpdated of InterviewForm.Msg
     | InterviewSubmitted of Interview.Result
+    | LogboekUpdated of LogboekForm.Msg
+    | LogboekSubmitted of Logboek.Result
 
-let todosApi =
-    Remoting.createApi ()
-    |> Remoting.withRouteBuilder Route.builder
-    |> Remoting.buildProxy<ITodosApi>
+// let todosApi =
+//     Remoting.createApi ()
+//     |> Remoting.withRouteBuilder Route.builder
+//     |> Remoting.buildProxy<ITodosApi>
 
 let init () : Model * Cmd<Msg> =
     { CurrentPage = Algemeen
       AlgemeenAkkoord = false
       DemografischForm = DemografischForm.init ()
-      InterviewForm = InterviewForm.init () }
+      InterviewForm = InterviewForm.init ()
+      LogboekForm = LogboekForm.init () }
     , Cmd.none
 
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
@@ -52,6 +56,11 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         { model with InterviewForm = form }, cmd
     | InterviewSubmitted result ->
         { model with CurrentPage = Logboek }, Cmd.none
+    | LogboekUpdated msg ->
+        let form, cmd = LogboekForm.update LogboekSubmitted msg model.LogboekForm
+        { model with LogboekForm = form }, cmd
+    | LogboekSubmitted result ->
+        { model with LogboekForm = LogboekForm.init () }, Cmd.none
 
 open Feliz
 open Feliz.Bulma
@@ -165,7 +174,7 @@ let interview (model: Model) (dispatch: Msg -> unit) =
 
 let logboek (model: Model) (dispatch: Msg -> unit) =
     Box.withHeader (dispatch, title = "Logboek", nOutOfN = (4, 4), previousPage = Interview, children = [
-        Html.p "Logboek"
+        LogboekForm.view (model.LogboekForm) (LogboekUpdated >> dispatch)
     ])
 
 let view (model: Model) (dispatch: Msg -> unit) =

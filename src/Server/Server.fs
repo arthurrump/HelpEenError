@@ -10,7 +10,8 @@ open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 open Saturn
 
-open Shared
+open Shared.Models
+open Shared.Api
 
 module Todo =
     let ofDataReader (rd: IDataReader) : Todo =
