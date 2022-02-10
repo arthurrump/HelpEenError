@@ -69,16 +69,16 @@ type Storage(conn: IDbConnection, ?tran: IDbTransaction) =
                 beschrijving TEXT,
                 verwachting TEXT,
                 vervolgactie TEXT NOT NULL,
-                CONSTRAINT fout_beschrijving_and_verwachting CHECK (beschrijving NOT NULL = verwachting NOT NULL),
-                CONSTRAINT fout_xor_foutmelding CHECK (foutmelding NOT NULL <> beschrijving NOT NULL)
+                CONSTRAINT fout_beschrijving_and_verwachting CHECK ((beschrijving NOT NULL) = (verwachting NOT NULL)),
+                CONSTRAINT fout_xor_foutmelding CHECK ((foutmelding NOT NULL) <> (beschrijving NOT NULL))
             );
         """
         conn |> Db.newCommand cmd |> dbExec
 
-    member __.AddRespondent (RespondentId id, demografisch: Demografisch.Result) =
+    member __.AddOrReplaceRespondent (RespondentId id, demografisch: Demografisch.Result) =
         conn
         |> Db.newCommand """
-            INSERT INTO respondenten (id, schoolniveau, programmeervaardigheid, programmeerervaring)
+            INSERT OR REPLACE INTO respondenten (id, schoolniveau, programmeervaardigheid, programmeerervaring)
             VALUES (@id, @schoolniveau, @programmeervaardigheid, @programmeerervaring)"""
         |> Db.setParams
             [ "id", SqlType.String (id.ToString())
@@ -157,7 +157,10 @@ type Storage(conn: IDbConnection, ?tran: IDbTransaction) =
             conn.Close()
             tran |> Option.iter (fun tran -> tran.Dispose ())
 
-let storage = new Storage(":memory:", "test")
+let dbPath = "test.db"
+let dbPassword = "test"
+
+let storage = new Storage(dbPath, dbPassword)
 
 storage.Initialize()
 |> ignore
@@ -175,7 +178,7 @@ let dbErrorMessage = function
 let api =
     let grantToestemming () =
         async {
-            return Ok (RespondentId (Guid()))
+            return Ok (RespondentId (Guid.NewGuid ()))
         }
     let revokeToestemming (respondentId, interviewIdOpt) =
         async {
@@ -192,7 +195,7 @@ let api =
         }
     let submitDemografisch respondentId demografisch =
         async {
-            return storage.AddRespondent (respondentId, demografisch)
+            return storage.AddOrReplaceRespondent (respondentId, demografisch)
             |> Result.mapError dbErrorMessage
         }
     let submitInterview interviewIdOpt (demografisch, interview) =
@@ -206,17 +209,17 @@ let api =
                     do! storage.DeleteInterview interviewId
                     return interviewId
                 | None, Interview.Result.Ja contact ->
-                    let interviewId = InterviewId (Guid())
+                    let interviewId = InterviewId (Guid.NewGuid())
                     do! storage.AddOrReplaceInterview (interviewId, demografisch, contact)
                     return interviewId
                 | None, Interview.Result.Nee ->
-                    return InterviewId (Guid())
+                    return InterviewId (Guid.NewGuid())
             } |> Result.mapError dbErrorMessage
         }
     let submitLog respondentId logboek =
         async {
             return result {
-                let logId = LogId (Guid())
+                let logId = LogId (Guid.NewGuid())
                 do! storage.AddLog (logId, respondentId, logboek)
                 return logId
             } |> Result.mapError dbErrorMessage
