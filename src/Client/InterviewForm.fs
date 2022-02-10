@@ -3,6 +3,7 @@ module InterviewForm
 open Feliz
 open Feliz.Bulma
 open Form
+open Shared.Api
 open Shared.Form
 open Shared.Models
 
@@ -44,8 +45,7 @@ module Internal =
           CancelButton = Some "Annuleren"
           Update = update
           Validate = Interview.Validate.form
-          ValidateAllFields = Interview.Form.validateAll
-          Submit = fun _ -> async { return Ok () } } // TODO
+          ValidateAllFields = Interview.Form.validateAll }
 
     let view (model: Model) dispatch = [
         Html.p [
@@ -106,8 +106,8 @@ module Internal =
     ]
 
 type Model = Form.Model<Internal.Model>
-type Msg = Form.Msg<Internal.Msg, Interview.Result, unit>
-type ReturnMsg = Form.ReturnMsg<Interview.Result, unit>
+type Msg = Form.Msg<Internal.Msg, Interview.Result, InterviewId>
+type ReturnMsg<'msg> = Form.ReturnMsg<Interview.Result, InterviewId, 'msg>
 
 let init () : Model =
     Form.init Internal.init

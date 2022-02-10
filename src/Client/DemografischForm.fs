@@ -32,8 +32,7 @@ module Internal =
           CancelButton = Some "Annuleren"
           Update = update
           Validate = Demografisch.Validate.form
-          ValidateAllFields = Demografisch.Form.validateAll
-          Submit = fun _ -> async { return Ok () } } // TODO
+          ValidateAllFields = Demografisch.Form.validateAll }
 
     let view (model: Model) (dispatch: Msg -> unit) = [
         Html.p [
@@ -64,7 +63,7 @@ module Internal =
 
 type Model = Form.Model<Internal.Model>
 type Msg = Form.Msg<Internal.Msg, Demografisch.Result, unit>
-type ReturnMsg = Form.ReturnMsg<Demografisch.Result, unit>
+type ReturnMsg<'msg> = Form.ReturnMsg<Demografisch.Result, unit, 'msg>
 
 let init () : Model =
     Form.init Internal.init

@@ -25,8 +25,7 @@ module Internal =
           CancelButton = Some "Annuleren"
           Update = update
           Validate = fun fields -> Ok fields.Akkoord
-          ValidateAllFields = id
-          Submit = fun _ -> async { return Ok () } } // TODO
+          ValidateAllFields = id }
 
     let view fields dispatch = [
         Bulma.field.div [
@@ -40,9 +39,13 @@ module Internal =
         ]
     ]
 
+type Result =
+    | ToestemmingGranted of Shared.Api.RespondentId
+    | ToestemmingRevoked
+
 type Model = Form.Model<Internal.Model>
-type Msg = Form.Msg<Internal.Msg, bool, unit>
-type ReturnMsg = Form.ReturnMsg<bool, unit>
+type Msg = Form.Msg<Internal.Msg, bool, Result>
+type ReturnMsg<'msg> = Form.ReturnMsg<bool, Result, 'msg>
 
 let init () : Model =
     Form.init Internal.init

@@ -3,6 +3,7 @@ module LogboekForm
 open Feliz
 open Feliz.Bulma
 open Form
+open Shared.Api
 open Shared.Form
 open Shared.Library
 open Shared.Models
@@ -39,8 +40,7 @@ module Internal =
           CancelButton = Some "Annuleren"
           Update = update
           Validate = Logboek.Validate.form
-          ValidateAllFields = Logboek.Form.validateAll
-          Submit = fun _ -> async { return Ok () } } // TODO
+          ValidateAllFields = Logboek.Form.validateAll }
 
     let view (model: Model) (dispatch: Msg -> unit) = [
         Form.UI.radio(
@@ -48,7 +48,7 @@ module Internal =
             name = "type",
             options =
                 [ "foutmelding", "Ik krijg een foutmelding"
-                  "onverwacht-gedrag", "Het programma werkt niet zoals ik verwacht had" ],
+                  "onverwacht-gedrag", "Het programma werkt niet zoals ik verwacht" ],
             field = model.Type,
             dispatch = (Type >> dispatch))
         if model.Type.Value = Some "foutmelding" then
@@ -73,8 +73,8 @@ module Internal =
     ]
 
 type Model = Form.Model<Internal.Model>
-type Msg = Form.Msg<Internal.Msg, Logboek.Result, unit>
-type ReturnMsg = Form.ReturnMsg<Logboek.Result, unit>
+type Msg = Form.Msg<Internal.Msg, Logboek.Result, LogId>
+type ReturnMsg<'msg> = Form.ReturnMsg<Logboek.Result, LogId, 'msg>
 
 let init () : Model =
     Form.init Internal.init

@@ -3,6 +3,8 @@ module Index
 open Elmish
 open Form
 open Fable.Remoting.Client
+open FsToolkit.ErrorHandling
+open Shared.Api
 open Shared.Models
 
 type Page =
@@ -13,38 +15,39 @@ type Page =
 
 type Model =
     { CurrentPage: Page
-      AlgemeneToestemming: bool
       ToestemmingForm: ToestemmingForm.Model
+      RespondentId: RespondentId option
       DemografischForm: DemografischForm.Model
       DemografischeGegevens: Demografisch.Result option
       InterviewForm: InterviewForm.Model
+      InterviewId: InterviewId option
       LogboekForm: LogboekForm.Model
-      Logboek: Logboek.Result list }
+      Logboek: (LogId * Logboek.Result) list }
 
 type Msg =
     | GotoPage of Page
     | ToestemmingFormInternal of ToestemmingForm.Msg
-    | ToestemmingFormReturn of ToestemmingForm.ReturnMsg
+    | ToestemmingFormReturn of ToestemmingForm.ReturnMsg<Msg>
     | DemografischFormInternal of DemografischForm.Msg
-    | DemografischFormReturn of DemografischForm.ReturnMsg
+    | DemografischFormReturn of DemografischForm.ReturnMsg<Msg>
     | InterviewFormInternal of InterviewForm.Msg
-    | InterviewFormReturn of InterviewForm.ReturnMsg
+    | InterviewFormReturn of InterviewForm.ReturnMsg<Msg>
     | LogboekFormInternal of LogboekForm.Msg
-    | LogboekFormReturn of LogboekForm.ReturnMsg
+    | LogboekFormReturn of LogboekForm.ReturnMsg<Msg>
 
-
-// let todosApi =
-//     Remoting.createApi ()
-//     |> Remoting.withRouteBuilder Route.builder
-//     |> Remoting.buildProxy<ITodosApi>
+let api =
+    Remoting.createApi ()
+    |> Remoting.withRouteBuilder Route.builder
+    |> Remoting.buildProxy<ILogboekApi>
 
 let init () : Model * Cmd<Msg> =
     { CurrentPage = Algemeen
-      AlgemeneToestemming = false
+      RespondentId = None
       ToestemmingForm = ToestemmingForm.init ()
       DemografischForm = DemografischForm.init ()
       DemografischeGegevens = None
       InterviewForm = InterviewForm.init ()
+      InterviewId = None
       LogboekForm = LogboekForm.init ()
       Logboek = [] }
     , Cmd.none
@@ -57,17 +60,43 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     | ToestemmingFormInternal msg ->
         let form, cmd = ToestemmingForm.update (ToestemmingFormReturn, ToestemmingFormInternal) msg model.ToestemmingForm
         { model with ToestemmingForm = form }, cmd
+    | ToestemmingFormReturn (Form.Submit (akkoord, onResponse)) ->
+        match model.RespondentId, akkoord with
+        | None, true ->
+            model, Cmd.OfAsync.result (async {
+                let! resp = api.grantToestemming ()
+                return onResponse (resp |> Result.map ToestemmingForm.ToestemmingGranted)
+            })
+        | Some respondentId, false ->
+            model, Cmd.OfAsync.result (async {
+                let! resp = api.revokeToestemming (respondentId, model.InterviewId)
+                return onResponse (resp |> Result.map (fun _ -> ToestemmingForm.ToestemmingRevoked))
+            })
+        | Some _, true
+        | None, false ->
+            model, Cmd.none
     | ToestemmingFormReturn Form.Next ->
-        // TODO: Depends on whether we got permission or not
-        { model with CurrentPage = Demografisch }, Cmd.none
-    | ToestemmingFormReturn (Form.Submitted (result, response)) ->
-        // TODO: Response is some token, store for use with other methods
-        // TODO: React if the person retracted permission, somehow identify from response
-        { model with AlgemeneToestemming = result }, Cmd.none
+        if model.RespondentId |> Option.isSome then
+            { model with CurrentPage = Demografisch }, Cmd.none
+        else
+            { model with CurrentPage = Algemeen }, Cmd.none // TODO: Show needs permission page
+    | ToestemmingFormReturn (Form.Submitted (_, response)) ->
+        match response with
+        | ToestemmingForm.ToestemmingGranted respondentId ->
+            { model with RespondentId = Some respondentId }, Cmd.none
+        | ToestemmingForm.ToestemmingRevoked ->
+            let model, cmd = init ()
+            { model with CurrentPage = Algemeen }, cmd // TODO: Show revoked page
 
     | DemografischFormInternal msg ->
         let form, cmd = DemografischForm.update (DemografischFormReturn, DemografischFormInternal) msg model.DemografischForm
         { model with DemografischForm = form }, cmd
+    | DemografischFormReturn (Form.Submit (result, onResponse)) ->
+        match model.RespondentId with
+        | Some respondentId ->
+            model, Cmd.OfAsync.result (api.submitDemografisch respondentId result |> Async.map onResponse)
+        | None ->
+            { model with CurrentPage = Algemeen }, Cmd.none // TODO: Sessie verlopen?
     | DemografischFormReturn Form.Next ->
         { model with CurrentPage = Interview }, Cmd.none
     | DemografischFormReturn (Form.Submitted (result, _)) ->
@@ -76,19 +105,31 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     | InterviewFormInternal msg ->
         let form, cmd = InterviewForm.update (InterviewFormReturn, InterviewFormInternal) msg model.InterviewForm
         { model with InterviewForm = form }, cmd
+    | InterviewFormReturn (Form.Submit (result, onResponse)) ->
+        match model.DemografischeGegevens with
+        | Some demografisch ->
+            model, Cmd.OfAsync.result (api.submitInterview model.InterviewId (demografisch, result) |> Async.map onResponse)
+        | None ->
+            { model with CurrentPage = Demografisch }, Cmd.none // TODO: Some error?
     | InterviewFormReturn Form.Next ->
         { model with CurrentPage = Logboek }, Cmd.none
-    | InterviewFormReturn (Form.Submitted (_, _)) ->
-        model, Cmd.none
+    | InterviewFormReturn (Form.Submitted (_, interviewId)) ->
+        { model with InterviewId = Some interviewId }, Cmd.none
 
     | LogboekFormInternal msg ->
         let form, cmd = LogboekForm.update (LogboekFormReturn, LogboekFormInternal) msg model.LogboekForm
         { model with LogboekForm = form }, cmd
+    | LogboekFormReturn (Form.Submit (result, onResponse)) ->
+        match model.RespondentId with
+        | Some respondentId ->
+            model, Cmd.OfAsync.result (api.submitLog respondentId result |> Async.map onResponse)
+        | None ->
+            { model with CurrentPage = Demografisch }, Cmd.none // TODO: Sessie verlopen?
     | LogboekFormReturn Form.Next ->
         model, Cmd.none
-    | LogboekFormReturn (Form.Submitted (result, _)) ->
+    | LogboekFormReturn (Form.Submitted (result, logId)) ->
         { model with
-            Logboek = result :: model.Logboek
+            Logboek = (logId, result) :: model.Logboek
             LogboekForm = LogboekForm.init () }, Cmd.none
 
 open Feliz

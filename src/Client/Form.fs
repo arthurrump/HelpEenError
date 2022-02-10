@@ -13,8 +13,7 @@ type Form<'fields, 'fieldsMsg, 'result, 'response> =
       CancelButton: string option
       Update: 'fieldsMsg -> 'fields -> 'fields
       Validate: 'fields -> Result<'result, ValidationErrors>
-      ValidateAllFields: 'fields -> 'fields
-      Submit: 'result -> Async<Result<'response, string>> }
+      ValidateAllFields: 'fields -> 'fields }
 
 module Form =
     type Model<'fields> =
@@ -34,7 +33,8 @@ module Form =
         | ClickedCancel
         | ClickedNext
 
-    type ReturnMsg<'result, 'response> =
+    type ReturnMsg<'result, 'response, 'msg> =
+        | Submit of 'result * onResponse: (Result<'response, string> -> 'msg)
         | Submitted of 'result * 'response
         | Next
 
@@ -70,10 +70,10 @@ module Form =
 
     let update
             (form: Form<'fields, 'fieldsMsg, 'result, 'response>)
-            (returnMsg: ReturnMsg<'result, 'response> -> 'a)
-            (internalMsg: Msg<'fieldsMsg, 'result, 'response> -> 'a)
+            (returnMsg: ReturnMsg<'result, 'response, 'msg> -> 'msg)
+            (internalMsg: Msg<'fieldsMsg, 'result, 'response> -> 'msg)
             (msg: Msg<'fieldsMsg, 'result, 'response>)
-            (model: Model<'fields>) : Model<'fields> * Cmd<'a> =
+            (model: Model<'fields>) : Model<'fields> * Cmd<'msg> =
         match msg with
         | FieldsMsg fieldsMsg ->
             let model = storeOldFields model
@@ -86,10 +86,8 @@ module Form =
             match form.Validate model.Fields with
             | Ok result ->
                 let cmd =
-                    Cmd.OfAsync.perform
-                        form.Submit
-                        result
-                        (fun resp -> internalMsg (SubmissionResponseReceived ((msg = ClickedSubmitAndNext), result, resp)))
+                    let onResponse resp = internalMsg (SubmissionResponseReceived ((msg = ClickedSubmitAndNext), result, resp))
+                    Cmd.ofMsg (returnMsg (Submit (result, onResponse)))
                 { model with
                     Errors = []
                     IsSubmitting = true }, cmd
