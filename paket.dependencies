@@ -4,6 +4,7 @@ storage: none
 
 nuget Donald
 nuget Fable.Remoting.Giraffe
+nuget FsToolkit.ErrorHandling
 nuget Microsoft.Data.Sqlite
 nuget Saturn
 nuget Expecto
