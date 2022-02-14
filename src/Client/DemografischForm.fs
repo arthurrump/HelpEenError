@@ -68,8 +68,8 @@ type Model = Form.Model<Internal.Model>
 type Msg = Form.Msg<Internal.Msg, Demografisch.Result, unit>
 type ReturnMsg<'msg> = Form.ReturnMsg<Demografisch.Result, unit, 'msg>
 
-let init () : Model =
-    Form.init Internal.init
+let init persisted : Model =
+    Form.init Internal.init persisted
 
 let update (returnMsg, formMsg) (msg: Msg) (model: Model) =
     Form.update Internal.form returnMsg formMsg msg model

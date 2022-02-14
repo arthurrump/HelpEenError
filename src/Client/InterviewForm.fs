@@ -112,8 +112,8 @@ type Model = Form.Model<Internal.Model>
 type Msg = Form.Msg<Internal.Msg, Interview.Result, InterviewId>
 type ReturnMsg<'msg> = Form.ReturnMsg<Interview.Result, InterviewId, 'msg>
 
-let init () : Model =
-    Form.init Internal.init
+let init persisted : Model =
+    Form.init Internal.init persisted
 
 let update (returnMsg, formMsg) (msg: Msg) (model: Model) =
     Form.update Internal.form returnMsg formMsg msg model

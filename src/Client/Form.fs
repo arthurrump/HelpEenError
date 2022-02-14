@@ -38,14 +38,18 @@ module Form =
         | Submitted of 'result * 'response
         | Next
 
-    let init initFields =
-        { Fields = initFields ()
-          OldFields = None
-          Errors = []
-          CombineSubmitNext = true
-          IsDirty = false
-          IsSubmitting = false
-          IsSubmitDisabled = false }
+    let init initFields persisted =
+        match persisted with
+        | None ->
+            { Fields = initFields ()
+              OldFields = None
+              Errors = []
+              CombineSubmitNext = true
+              IsDirty = false
+              IsSubmitting = false
+              IsSubmitDisabled = false }
+        | Some p ->
+            { p with IsSubmitting = false }
 
     let private storeOldFields model =
         if model.OldFields = None then
@@ -285,7 +289,7 @@ module Form =
                             Bulma.control.div [
                                 Bulma.button.button [
                                     color.isPrimary
-                                    prop.disabled model.IsSubmitDisabled
+                                    prop.disabled (model.IsSubmitDisabled || not model.IsDirty)
                                     if model.IsSubmitting then button.isLoading
                                     prop.text form.SubmitButton
                                     prop.onClick (fun _ -> dispatch ClickedSubmit)

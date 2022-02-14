@@ -1,6 +1,7 @@
 module App
 
 open Elmish
+open Elmish.Persistance
 open Elmish.React
 
 #if DEBUG
@@ -13,7 +14,8 @@ Program.mkProgram Index.init Index.update Index.view
 |> Program.withConsoleTrace
 #endif
 |> Program.withReactSynchronous "elmish-app"
+|> Program.withLocalPersistance "elmish-app"
 #if DEBUG
 |> Program.withDebugger
 #endif
-|> Program.run
+|> Program.runWith None

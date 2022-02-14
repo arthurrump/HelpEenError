@@ -40,17 +40,30 @@ let api =
     |> Remoting.withRouteBuilder Route.builder
     |> Remoting.buildProxy<ILogboekApi>
 
-let init () : Model * Cmd<Msg> =
-    { CurrentPage = Algemeen
-      RespondentId = None
-      ToestemmingForm = ToestemmingForm.init ()
-      DemografischForm = DemografischForm.init ()
-      DemografischeGegevens = None
-      InterviewForm = InterviewForm.init ()
-      InterviewId = None
-      LogboekForm = LogboekForm.init ()
-      Logboek = [] }
-    , Cmd.none
+let init (persisted: Model option) : Model * Cmd<Msg> =
+    match persisted with
+    | None ->
+        { CurrentPage = Algemeen
+          RespondentId = None
+          ToestemmingForm = ToestemmingForm.init None
+          DemografischForm = DemografischForm.init None
+          DemografischeGegevens = None
+          InterviewForm = InterviewForm.init None
+          InterviewId = None
+          LogboekForm = LogboekForm.init None
+          Logboek = [] }
+        , Cmd.none
+    | Some p ->
+        { CurrentPage = p.CurrentPage
+          RespondentId = p.RespondentId
+          ToestemmingForm = ToestemmingForm.init (Some p.ToestemmingForm)
+          DemografischForm = DemografischForm.init (Some p.DemografischForm)
+          DemografischeGegevens = p.DemografischeGegevens
+          InterviewForm = InterviewForm.init (Some p.InterviewForm)
+          InterviewId = p.InterviewId
+          LogboekForm = LogboekForm.init (Some p.LogboekForm)
+          Logboek = p.Logboek }
+        , Cmd.none
 
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     match msg with
@@ -72,9 +85,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
                 let! resp = api.revokeToestemming (respondentId, model.InterviewId)
                 return onResponse (resp |> Result.map (fun _ -> ToestemmingForm.ToestemmingRevoked))
             })
-        | Some _, true ->
+        | Some respondentId, true ->
             // We already have given permission, and received an id
-            model, Cmd.none
+            model, Cmd.ofMsg (onResponse (Ok (ToestemmingForm.ToestemmingGranted respondentId)))
         | None, false ->
             model, Cmd.ofMsg (onResponse (Error "Als je niet akkoord gaat, kun je niet meedoen aan het onderzoek."))
     | ToestemmingFormReturn Form.Next ->
@@ -87,7 +100,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         | ToestemmingForm.ToestemmingGranted respondentId ->
             { model with RespondentId = Some respondentId }, Cmd.none
         | ToestemmingForm.ToestemmingRevoked ->
-            let model, cmd = init ()
+            let model, cmd = init None
             { model with CurrentPage = Algemeen }, cmd // TODO: Show revoked page
 
     | DemografischFormInternal msg ->
@@ -132,7 +145,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     | LogboekFormReturn (Form.Submitted (result, logId)) ->
         { model with
             Logboek = (logId, result) :: model.Logboek
-            LogboekForm = LogboekForm.init () }, Cmd.none
+            LogboekForm = LogboekForm.init None }, Cmd.none
 
 open Feliz
 open Feliz.Bulma

@@ -47,8 +47,8 @@ type Model = Form.Model<Internal.Model>
 type Msg = Form.Msg<Internal.Msg, bool, Result>
 type ReturnMsg<'msg> = Form.ReturnMsg<bool, Result, 'msg>
 
-let init () : Model =
-    Form.init Internal.init
+let init persisted : Model =
+    Form.init Internal.init persisted
 
 let update (returnMsg, formMsg) (msg: Msg) (model: Model) =
     Form.update Internal.form returnMsg formMsg msg model
