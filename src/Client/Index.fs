@@ -72,9 +72,11 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
                 let! resp = api.revokeToestemming (respondentId, model.InterviewId)
                 return onResponse (resp |> Result.map (fun _ -> ToestemmingForm.ToestemmingRevoked))
             })
-        | Some _, true
-        | None, false ->
+        | Some _, true ->
+            // We already have given permission, and received an id
             model, Cmd.none
+        | None, false ->
+            model, Cmd.ofMsg (onResponse (Error "Als je niet akkoord gaat, kun je niet meedoen aan het onderzoek."))
     | ToestemmingFormReturn Form.Next ->
         if model.RespondentId |> Option.isSome then
             { model with CurrentPage = Demografisch }, Cmd.none
