@@ -5,45 +5,34 @@ open Shared.Library
 
 type Validator<'t, 'tres> = string -> 't option -> Result<'tres, ValidationErrors>
 
-[<CustomEquality; NoComparison>]
-type Field<'t, 'tres when 't : equality> =
+type FieldConfig<'t, 'tres> =
     { Name: string
-      Value: 't option
-      Error: string option
       Validator: Validator<'t, 'tres> }
 
-    override this.GetHashCode () =
-        hash (this.Name, this.Value, this.Error)
-
-    override this.Equals (that: obj) =
-        match that with
-        | :? Field<'t, 'tres> as that ->
-            this.Name = that.Name &&
-            this.Value = that.Value &&
-            this.Error = that.Error
-        | _ ->
-            false
+type Field<'t> =
+    { Value: 't option
+      Error: string option }
 
 module Field =
-    let init (name, validator) =
+    let config (name, validator) =
         { Name = name
-          Value = None
-          Error = None
           Validator = validator }
 
-    let initSimple name =
+    let configSimple name =
         { Name = name
-          Value = None
-          Error = None
           Validator = (fun _ -> Ok) }
 
-    let validate field =
-        field.Validator field.Name field.Value
+    let init () =
+        { Value = None
+          Error = None }
 
-    let validated field =
-        { field with
+    let validate config model =
+        config.Validator config.Name model.Value
+
+    let validated config model =
+        { model with
             Error =
-                validate field
+                validate config model
                 |> Result.getError
                 |> Option.map (ValidationErrors.toList >> String.concat " ") }
 
@@ -51,12 +40,12 @@ module Field =
         | Update of 't
         | Validate
 
-    let update msg model =
+    let update config msg model =
         match msg with
         | Update newValue when model.Error = None ->
             { model with Value = Some newValue }
         | Update newValue ->
-            validated { model with Value = Some newValue }
+            validated config { model with Value = Some newValue }
         | Validate ->
-            validated model
+            validated config model
 

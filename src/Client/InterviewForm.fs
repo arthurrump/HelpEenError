@@ -19,33 +19,36 @@ module Internal =
         | OuderDan16 of Field.Msg<string>
         | EmailOuders of Field.Msg<string>
 
+    let config =
+        Interview.Form.config ()
+
     let init () =
         Interview.Form.init ()
 
     let update msg (model: Model) =
         match msg with
         | Meedoen msg ->
-            { model with Meedoen = Field.update msg model.Meedoen }
+            { model with Meedoen = Field.update config.Meedoen msg model.Meedoen }
         | Naam msg ->
-            { model with Naam = Field.update msg model.Naam }
+            { model with Naam = Field.update config.Naam msg model.Naam }
         | Klas msg ->
-            { model with Klas = Field.update msg model.Klas }
+            { model with Klas = Field.update config.Klas msg model.Klas }
         | School msg ->
-            { model with School = Field.update msg model.School }
+            { model with School = Field.update config.School msg model.School }
         | Email msg ->
-            { model with Email = Field.update msg model.Email }
+            { model with Email = Field.update config.Email msg model.Email }
         | OuderDan16 msg ->
-            { model with OuderDan16 = Field.update msg model.OuderDan16 }
+            { model with OuderDan16 = Field.update config.OuderDan16 msg model.OuderDan16 }
         | EmailOuders msg ->
-            { model with EmailOuders = Field.update msg model.EmailOuders }
+            { model with EmailOuders = Field.update config.EmailOuders msg model.EmailOuders }
 
     let form =
         { SubmitButton = "Opslaan"
           NextButton = Some "Verder"
           CancelButton = Some "Annuleren"
           Update = update
-          Validate = Interview.Validate.form
-          ValidateAllFields = Interview.Form.validateAll }
+          Validate = Interview.Validate.form config
+          ValidateAllFields = Interview.Form.validateAll config }
 
     let view (model: Model) dispatch = [
         Html.p [

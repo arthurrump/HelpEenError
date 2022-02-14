@@ -135,7 +135,7 @@ module Form =
             ]
 
         static member textbox(
-                field: Field<string, 'tres>,
+                field: Field<string>,
                 dispatch: Field.Msg<string> -> unit,
                 ?title: string,
                 ?explainer: seq<Fable.React.ReactElement>,
@@ -154,7 +154,7 @@ module Form =
             ])
 
         static member textarea(
-                field: Field<string, 'tres>,
+                field: Field<string>,
                 dispatch: Field.Msg<string> -> unit,
                 ?title: string,
                 ?explainer: seq<Fable.React.ReactElement>,
@@ -177,7 +177,7 @@ module Form =
         static member radio(
                 name: string,
                 options: (string * string) list,
-                field: Field<string, 'tres>,
+                field: Field<string>,
                 dispatch: Field.Msg<string> -> unit,
                 ?title: string,
                 ?explainer: seq<Fable.React.ReactElement>) =
@@ -204,7 +204,7 @@ module Form =
 
         static member likert(
                 name: string,
-                field: Field<int, 'tres>,
+                field: Field<int>,
                 dispatch: Field.Msg<int> -> unit,
                 ?title: string,
                 ?explainer: seq<Fable.React.ReactElement>,

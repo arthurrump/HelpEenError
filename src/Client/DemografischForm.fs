@@ -14,25 +14,28 @@ module Internal =
         | ProgrammeerVaardigheid of Field.Msg<int>
         | ProgrammeerErvaring of Field.Msg<int>
 
+    let config =
+        Demografisch.Form.config ()
+
     let init () =
         Demografisch.Form.init ()
 
     let update msg (model: Model) =
         match msg with
         | Schoolniveau msg ->
-            { model with Schoolniveau = Field.update msg model.Schoolniveau }
+            { model with Schoolniveau = Field.update config.Schoolniveau msg model.Schoolniveau }
         | ProgrammeerVaardigheid msg ->
-            { model with ProgrammeerVaardigheid = Field.update msg model.ProgrammeerVaardigheid }
+            { model with ProgrammeerVaardigheid = Field.update config.ProgrammeerVaardigheid msg model.ProgrammeerVaardigheid }
         | ProgrammeerErvaring msg ->
-            { model with ProgrammeerErvaring = Field.update msg model.ProgrammeerErvaring }
+            { model with ProgrammeerErvaring = Field.update config.ProgrammeerErvaring msg model.ProgrammeerErvaring }
 
     let form =
         { SubmitButton = "Opslaan"
           NextButton = Some "Verder"
           CancelButton = Some "Annuleren"
           Update = update
-          Validate = Demografisch.Validate.form
-          ValidateAllFields = Demografisch.Form.validateAll }
+          Validate = Demografisch.Validate.form config
+          ValidateAllFields = Demografisch.Form.validateAll config }
 
     let view (model: Model) (dispatch: Msg -> unit) = [
         Html.p [
