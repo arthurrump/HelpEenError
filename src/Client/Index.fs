@@ -6,12 +6,24 @@ open Fable.Remoting.Client
 open FsToolkit.ErrorHandling
 open Shared.Api
 open Shared.Models
+open Fable.Core.JS
+open System
 
 type Page =
     | Algemeen
     | Demografisch
     | Interview
     | Logboek
+
+[<RequireQualifiedAccess>]
+type NotificationType =
+    | Success
+    | Error
+
+type Notification =
+    { Guid: Guid
+      Message: string
+      Type: NotificationType }
 
 type Model =
     { CurrentPage: Page
@@ -22,7 +34,8 @@ type Model =
       InterviewForm: InterviewForm.Model
       InterviewId: InterviewId option
       LogboekForm: LogboekForm.Model
-      Logboek: (LogId * Logboek.Result) list }
+      Logboek: (LogId * Logboek.Result) list
+      Notifications: Notification list }
 
 type Msg =
     | GotoPage of Page
@@ -34,6 +47,8 @@ type Msg =
     | InterviewFormReturn of InterviewForm.ReturnMsg<Msg>
     | LogboekFormInternal of LogboekForm.Msg
     | LogboekFormReturn of LogboekForm.ReturnMsg<Msg>
+    | ShowNotification of NotificationType * message: string
+    | DismissNotification of Guid
 
 let api =
     Remoting.createApi ()
@@ -51,7 +66,8 @@ let init (persisted: Model option) : Model * Cmd<Msg> =
           InterviewForm = InterviewForm.init None
           InterviewId = None
           LogboekForm = LogboekForm.init None
-          Logboek = [] }
+          Logboek = []
+          Notifications = [] }
         , Cmd.none
     | Some p ->
         { CurrentPage = p.CurrentPage
@@ -62,7 +78,8 @@ let init (persisted: Model option) : Model * Cmd<Msg> =
           InterviewForm = InterviewForm.init (Some p.InterviewForm)
           InterviewId = p.InterviewId
           LogboekForm = LogboekForm.init (Some p.LogboekForm)
-          Logboek = p.Logboek }
+          Logboek = p.Logboek
+          Notifications = [] }
         , Cmd.none
 
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
@@ -94,14 +111,15 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         if model.RespondentId |> Option.isSome then
             { model with CurrentPage = Demografisch }, Cmd.none
         else
-            { model with CurrentPage = Algemeen }, Cmd.none // TODO: Show needs permission page
+            { model with CurrentPage = Algemeen }, Cmd.ofMsg (ShowNotification (NotificationType.Error, "Als je niet akkoord gaat, kun je niet meedoen aan het onderzoek."))
     | ToestemmingFormReturn (Form.Submitted (_, response)) ->
         match response with
         | ToestemmingForm.ToestemmingGranted respondentId ->
             { model with RespondentId = Some respondentId }, Cmd.none
         | ToestemmingForm.ToestemmingRevoked ->
             let model, cmd = init None
-            { model with CurrentPage = Algemeen }, cmd // TODO: Show revoked page
+            let notif = Cmd.ofMsg (ShowNotification (NotificationType.Success, "Je hebt je toestemming ingetrokken. Alle gegevens zijn verwijderd."))
+            { model with CurrentPage = Algemeen }, Cmd.batch [ cmd; notif ]
 
     | DemografischFormInternal msg ->
         let form, cmd = DemografischForm.update (DemografischFormReturn, DemografischFormInternal) msg model.DemografischForm
@@ -111,7 +129,10 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         | Some respondentId ->
             model, Cmd.OfAsync.result (api.submitDemografisch respondentId result |> Async.map onResponse)
         | None ->
-            { model with CurrentPage = Algemeen }, Cmd.none // TODO: Sessie verlopen?
+            { model with
+                CurrentPage = Algemeen
+                ToestemmingForm = ToestemmingForm.init None },
+            Cmd.ofMsg (ShowNotification (NotificationType.Error, "Je hebt nog geen toestemming gegeven, of je sessie is verlopen."))
     | DemografischFormReturn Form.Next ->
         { model with CurrentPage = Interview }, Cmd.none
     | DemografischFormReturn (Form.Submitted (result, _)) ->
@@ -125,7 +146,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         | Some demografisch ->
             model, Cmd.OfAsync.result (api.submitInterview model.InterviewId (demografisch, result) |> Async.map onResponse)
         | None ->
-            { model with CurrentPage = Demografisch }, Cmd.none // TODO: Some error?
+            { model with
+                CurrentPage = Demografisch },
+            Cmd.ofMsg (ShowNotification (NotificationType.Error, "Je hebt hier nog geen gegevens ingevuld, of je sessie is verlopen."))
     | InterviewFormReturn Form.Next ->
         { model with CurrentPage = Logboek }, Cmd.none
     | InterviewFormReturn (Form.Submitted (_, interviewId)) ->
@@ -139,13 +162,30 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         | Some respondentId ->
             model, Cmd.OfAsync.result (api.submitLog respondentId result |> Async.map onResponse)
         | None ->
-            { model with CurrentPage = Demografisch }, Cmd.none // TODO: Sessie verlopen?
+            { model with
+                CurrentPage = Algemeen
+                ToestemmingForm = ToestemmingForm.init None },
+            Cmd.ofMsg (ShowNotification (NotificationType.Error, "Je hebt nog geen toestemming gegeven, of je sessie is verlopen."))
     | LogboekFormReturn Form.Next ->
         model, Cmd.none
     | LogboekFormReturn (Form.Submitted (result, logId)) ->
         { model with
             Logboek = (logId, result) :: model.Logboek
             LogboekForm = LogboekForm.init None }, Cmd.none
+
+    | ShowNotification (type', msg) ->
+        let guid = Guid.NewGuid ()
+        let cmd =
+            let sub dispatch = setTimeout (fun () -> dispatch (DismissNotification guid)) 10000 |> ignore
+            Cmd.ofSub sub
+        let notification =
+            { Message = msg
+              Type = type'
+              Guid = guid }
+        { model with Notifications = notification :: model.Notifications }, cmd
+    | DismissNotification guid ->
+        let notifications = List.filter (fun n -> n.Guid <> guid) model.Notifications
+        { model with Notifications = notifications }, Cmd.none
 
 open Feliz
 open Feliz.Bulma
@@ -255,6 +295,23 @@ let view (model: Model) (dispatch: Msg -> unit) =
                                 interview model dispatch
                             | Logboek ->
                                 logboek model dispatch
+
+                            if not (List.isEmpty model.Notifications) then
+                                Bulma.box [
+                                    for notif in model.Notifications do
+                                        Bulma.notification [
+                                            match notif.Type with
+                                            | NotificationType.Success -> color.isSuccess
+                                            | NotificationType.Error -> color.isDanger
+                                            prop.children [
+                                                Html.p notif.Message
+                                                Html.button [
+                                                    prop.className "delete"
+                                                    prop.onClick (fun _ -> dispatch (DismissNotification notif.Guid))
+                                                ]
+                                            ]
+                                        ]
+                                ]
                         ]
                     ]
                 ]
