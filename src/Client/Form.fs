@@ -163,7 +163,8 @@ module Form =
                 ?title: string,
                 ?explainer: seq<Fable.React.ReactElement>,
                 ?rows: int,
-                ?placeholder: string) =
+                ?placeholder: string,
+                ?props) =
             UI.titleDiv(?title = title, ?explainer = explainer, children = [
                 Bulma.control.div [
                     Bulma.textarea [
@@ -173,6 +174,7 @@ module Form =
                         match rows with Some rows -> prop.rows rows | None -> ()
                         prop.onTextChange (Field.Update >> dispatch)
                         prop.onBlur (fun _ -> dispatch Field.Validate)
+                        yield! (defaultArg props [])
                     ]
                 ]
                 yield! showError field

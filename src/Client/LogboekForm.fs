@@ -58,7 +58,9 @@ module Internal =
             Form.UI.textarea (
                 title = "Wat is de foutmelding?",
                 field = model.FoutmeldingMelding,
-                dispatch = (FoutmeldingMelding >> dispatch))
+                dispatch = (FoutmeldingMelding >> dispatch),
+                props = [ text.isFamilyMonospace ],
+                placeholder = "  File \"main.py\", line 1\n    print( 0 / 0 ))\n                  ^\nSyntaxError: invalid syntax")
         if model.Type.Value = Some "onverwacht-gedrag" then
             Form.UI.textarea(
                 title = "Wat verwachtte je dat het programma zou doen?",
