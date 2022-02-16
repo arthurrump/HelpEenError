@@ -9,7 +9,13 @@ open Shared.Library
 open Shared.Models
 
 module Internal =
-    type Model = Logboek.Form
+    type Model =
+        { Form: Logboek.Form
+          FoutmeldingPlaceholder: string }
+
+    module Model =
+        let getForm model = model.Form
+        let updateForm f model = { model with Form = f model.Form }
 
     type Msg =
         | Type of Field.Msg<string>
@@ -21,59 +27,73 @@ module Internal =
     let config =
         Logboek.Form.config ()
 
-    let init () =
-        Logboek.Form.init ()
+    let init =
+        let random = System.Random ()
+        let foutmeldingPlaceholders =
+            [| "  File \"main.py\", line 1\n    print( 0 / 0 ))\n                  ^\nSyntaxError: invalid syntax"
+               "Traceback (most recent call last):\n  File \"main.py\", line 2, in <module>\n    print(y)\nNameError: name 'y' is not defined"
+               "  File \"<stdin>\", line 1\n    x = 0, y = 0\n        ^\nSyntaxError: cannot assign to literal"
+               "  File \"main.py\", line 4\n    print(\"It's false!\")\n    ^\nIndentationError: expected an indented block"
+               "Traceback (most recent call last):\n  File \"main.py\", line 2, in <module>\n    print(math.acos(\"1\"))\nTypeError: must be real number, not str"
+               "Traceback (most recent call last):\n  File \"main.py\", line 1, in <module>\n    1/0\nZeroDivisionError: division by zero" |]
+        fun () ->
+            { Form = Logboek.Form.init ()
+              FoutmeldingPlaceholder = foutmeldingPlaceholders[random.Next(foutmeldingPlaceholders.Length)] }
 
-    let update msg (model: Model) =
+    let updateForm msg (form: Logboek.Form) =
         match msg with
         | Type msg ->
-            { model with Type = Field.update config.Type msg model.Type }
+            { form with Type = Field.update config.Type msg form.Type }
         | FoutmeldingMelding msg ->
-            { model with FoutmeldingMelding = Field.update config.FoutmeldingMelding msg model.FoutmeldingMelding }
+            { form with FoutmeldingMelding = Field.update config.FoutmeldingMelding msg form.FoutmeldingMelding }
         | OnverwachtGedragBeschrijving msg ->
-            { model with OnverwachtGedragBeschrijving = Field.update config.OnverwachtGedragBeschrijving msg model.OnverwachtGedragBeschrijving }
+            { form with OnverwachtGedragBeschrijving = Field.update config.OnverwachtGedragBeschrijving msg form.OnverwachtGedragBeschrijving }
         | OnverwachtGedragVerwachting msg ->
-            { model with OnverwachtGedragVerwachting = Field.update config.OnverwachtGedragVerwachting msg model.OnverwachtGedragVerwachting }
+            { form with OnverwachtGedragVerwachting = Field.update config.OnverwachtGedragVerwachting msg form.OnverwachtGedragVerwachting }
         | Vervolgactie msg ->
-            { model with Vervolgactie = Field.update config.Vervolgactie msg model.Vervolgactie }
+            { form with Vervolgactie = Field.update config.Vervolgactie msg form.Vervolgactie }
+
+    let update msg (model: Model) =
+        { model with Form = updateForm msg model.Form }
 
     let form =
         { SubmitButton = "Toevoegen"
           NextButton = None
           CancelButton = Some "Annuleren"
           Update = update
-          Validate = Logboek.Validate.form config
-          ValidateAllFields = Logboek.Form.validateAll config }
+          Validate = Model.getForm >> Logboek.Validate.form config
+          ValidateAllFields = Model.updateForm (Logboek.Form.validateAll config) }
 
     let view (model: Model) (dispatch: Msg -> unit) = [
+        let form = model.Form
         Form.UI.radio(
             title = "Wat gaat er mis?",
             name = "type",
             options =
                 [ "foutmelding", "Ik krijg een foutmelding"
                   "onverwacht-gedrag", "Het programma werkt niet zoals ik verwacht" ],
-            field = model.Type,
+            field = form.Type,
             dispatch = (Type >> dispatch))
-        if model.Type.Value = Some "foutmelding" then
+        if form.Type.Value = Some "foutmelding" then
             Form.UI.textarea (
                 title = "Wat is de foutmelding?",
-                field = model.FoutmeldingMelding,
+                field = form.FoutmeldingMelding,
                 dispatch = (FoutmeldingMelding >> dispatch),
-                props = [ text.isFamilyMonospace ],
-                placeholder = "  File \"main.py\", line 1\n    print( 0 / 0 ))\n                  ^\nSyntaxError: invalid syntax")
-        if model.Type.Value = Some "onverwacht-gedrag" then
+                props = [ text.isFamilyMonospace; prop.rows 5 ],
+                placeholder = "Voorbeeld:\n" + model.FoutmeldingPlaceholder)
+        if form.Type.Value = Some "onverwacht-gedrag" then
             Form.UI.textarea(
                 title = "Wat verwachtte je dat het programma zou doen?",
-                field = model.OnverwachtGedragVerwachting,
+                field = form.OnverwachtGedragVerwachting,
                 dispatch = (OnverwachtGedragVerwachting >> dispatch))
             Form.UI.textarea(
                 title = "Wat doet het programma?",
-                field = model.OnverwachtGedragBeschrijving,
+                field = form.OnverwachtGedragBeschrijving,
                 dispatch = (OnverwachtGedragBeschrijving >> dispatch))
-        if Field.validate config.Type model.Type |> Result.isOk then
+        if Field.validate config.Type form.Type |> Result.isOk then
             Form.UI.textarea(
                 title = "Wat ga je doen om de fout op te lossen?",
-                field = model.Vervolgactie,
+                field = form.Vervolgactie,
                 dispatch = (Vervolgactie >> dispatch))
     ]
 
