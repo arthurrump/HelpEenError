@@ -25,6 +25,12 @@ type Notification =
       Message: string
       Type: NotificationType }
 
+[<RequireQualifiedAccess>]
+type LogState =
+    | Normal
+    | Deleting
+    | DeletingError of msg: string
+
 type Model =
     { CurrentPage: Page
       ToestemmingForm: ToestemmingForm.Model
@@ -34,7 +40,7 @@ type Model =
       InterviewForm: InterviewForm.Model
       InterviewId: InterviewId option
       LogboekForm: LogboekForm.Model
-      Logboek: (LogId * Logboek.Result) list
+      Logboek: (LogId * LogState * Logboek.Result) list
       Notifications: Notification list }
 
 type Msg =
@@ -47,6 +53,8 @@ type Msg =
     | InterviewFormReturn of InterviewForm.ReturnMsg<Msg>
     | LogboekFormInternal of LogboekForm.Msg
     | LogboekFormReturn of LogboekForm.ReturnMsg<Msg>
+    | LogboekDeleteEntry of LogId
+    | LogboekDeleteEntryResponse of LogId * Result<unit, string>
     | ShowNotification of NotificationType * message: string
     | DismissNotification of Guid
 
@@ -78,7 +86,7 @@ let init (persisted: Model option) : Model * Cmd<Msg> =
           InterviewForm = InterviewForm.init (Some p.InterviewForm)
           InterviewId = p.InterviewId
           LogboekForm = LogboekForm.init (Some p.LogboekForm)
-          Logboek = p.Logboek
+          Logboek = p.Logboek |> List.map (fun (id, _, log) -> (id, LogState.Normal, log))
           Notifications = [] }
         , Cmd.none
 
@@ -170,8 +178,38 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         model, Cmd.none
     | LogboekFormReturn (Form.Submitted (result, logId)) ->
         { model with
-            Logboek = (logId, result) :: model.Logboek
+            Logboek = (logId, LogState.Normal, result) :: model.Logboek
             LogboekForm = LogboekForm.init None }, Cmd.none
+    | LogboekDeleteEntry logId ->
+        match model.RespondentId with
+        | Some respondentId ->
+            { model with
+                Logboek =
+                    model.Logboek
+                    |> List.map (fun (id, state, log) ->
+                        if id = logId
+                        then (id, LogState.Deleting, log)
+                        else (id, state, log)) },
+            Cmd.OfAsync.either api.deleteLog (respondentId, logId)
+                (fun res -> LogboekDeleteEntryResponse (logId, res))
+                (fun ex -> LogboekDeleteEntryResponse (logId, Error ex.Message))
+        | None ->
+            { model with
+                CurrentPage = Algemeen
+                ToestemmingForm = ToestemmingForm.init None },
+            Cmd.ofMsg (ShowNotification (NotificationType.Error, "Je hebt nog geen toestemming gegeven, of je sessie is verlopen."))
+    | LogboekDeleteEntryResponse (logId, result) ->
+        match result with
+        | Ok () ->
+            { model with Logboek = model.Logboek |> List.filter (fun (id, _, _) -> id <> logId) }, Cmd.none
+        | Error msg ->
+            { model with
+                Logboek =
+                    model.Logboek
+                    |> List.map (fun (id, state, log) ->
+                        if id = logId
+                        then (id, LogState.DeletingError msg, log)
+                        else (id, state, log)) }, Cmd.none
 
     | ShowNotification (type', msg) ->
         let guid = Guid.NewGuid ()
@@ -267,9 +305,72 @@ let interview (model: Model) (dispatch: Msg -> unit) =
     ])
 
 let logboek (model: Model) (dispatch: Msg -> unit) =
-    Box.withHeader (dispatch, title = "Logboek", nOutOfN = (4, 4), previousPage = Interview, children = [
-        LogboekForm.view (model.LogboekForm) (LogboekFormInternal >> dispatch)
-    ])
+    Html.div [
+        Box.withHeader (dispatch, title = "Logboek", nOutOfN = (4, 4), previousPage = Interview, children = [
+            LogboekForm.view (model.LogboekForm) (LogboekFormInternal >> dispatch)
+        ])
+        Bulma.box [
+            if List.isEmpty model.Logboek then
+                Html.p [
+                    color.hasTextGrey
+                    prop.text "Je hebt nog niets aan het logboek toegevoegd"
+                ]
+            else
+                Html.p [
+                    spacing.mb5
+                    prop.text "Hieronder zie je alle fouten die je aan je logboek hebt toegevoegd. Klik op het kruisje om een item weer te verwijderen."
+                ]
+            for id, state, log in model.Logboek do
+                Bulma.message [
+                    Bulma.messageHeader [
+                        Bulma.text.p (match log with Logboek.Foutmelding _ -> "Foutmelding" | Logboek.OnverwachtGedrag _ -> "Werkt niet zoals verwacht")
+                        if state = LogState.Deleting then
+                            Html.span [ prop.className "loader" ]
+                        else
+                            Html.button [
+                                prop.className "delete"
+                                prop.onClick (fun _ -> dispatch (LogboekDeleteEntry id))
+                            ]
+                    ]
+                    Bulma.messageBody [
+                        match state with
+                        | LogState.DeletingError msg ->
+                            Bulma.notification [
+                                color.isDanger
+                                spacing.mb4
+                                prop.children [
+                                    Html.p $"Sorry, er is iets misgegaan bij het verwijderen: %s{msg}"
+                                ]
+                            ]
+                        | _ -> ()
+
+                        match log with
+                        | Logboek.Foutmelding (melding, vervolgactie) ->
+                            Bulma.field.div [
+                                Bulma.label "Wat is de foutmelding?"
+                                Html.pre [ prop.text melding; prop.className "px-3 py-2" ]
+                            ]
+                            Bulma.field.div [
+                                Bulma.label "Wat ga je doen om de fout op te lossen?"
+                                Bulma.text.p vervolgactie
+                            ]
+                        | Logboek.OnverwachtGedrag (beschrijving, verwachting, vervolgactie) ->
+                            Bulma.field.div [
+                                Bulma.label "Wat verwachtte je dat het programma zou doen?"
+                                Bulma.text.p verwachting
+                            ]
+                            Bulma.field.div [
+                                Bulma.label "Wat doet het programma?"
+                                Bulma.text.p beschrijving
+                            ]
+                            Bulma.field.div [
+                                Bulma.label "Wat ga je doen om de fout op te lossen?"
+                                Bulma.text.p vervolgactie
+                            ]
+                    ]
+                ]
+        ]
+    ]
 
 let view (model: Model) (dispatch: Msg -> unit) =
     Bulma.hero [
