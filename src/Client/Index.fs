@@ -101,15 +101,13 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     | ToestemmingFormReturn (Form.Submit (akkoord, onResponse)) ->
         match model.RespondentId, akkoord with
         | None, true ->
-            model, Cmd.OfAsync.result (async {
-                let! resp = api.grantToestemming ()
-                return onResponse (resp |> Result.map ToestemmingForm.ToestemmingGranted)
-            })
+            model, Cmd.OfAsync.either api.grantToestemming ()
+                (Result.map ToestemmingForm.ToestemmingGranted >> onResponse)
+                (fun ex -> onResponse (Error ex.Message))
         | Some respondentId, false ->
-            model, Cmd.OfAsync.result (async {
-                let! resp = api.revokeToestemming (respondentId, model.InterviewId)
-                return onResponse (resp |> Result.map (fun _ -> ToestemmingForm.ToestemmingRevoked))
-            })
+            model, Cmd.OfAsync.either api.revokeToestemming (respondentId, model.InterviewId)
+                (Result.map (fun _ -> ToestemmingForm.ToestemmingRevoked) >> onResponse)
+                (fun ex -> onResponse (Error ex.Message))
         | Some respondentId, true ->
             // We already have given permission, and received an id
             model, Cmd.ofMsg (onResponse (Ok (ToestemmingForm.ToestemmingGranted respondentId)))
@@ -135,7 +133,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     | DemografischFormReturn (Form.Submit (result, onResponse)) ->
         match model.RespondentId with
         | Some respondentId ->
-            model, Cmd.OfAsync.result (api.submitDemografisch respondentId result |> Async.map onResponse)
+            model, Cmd.OfAsync.either (api.submitDemografisch respondentId) result
+                onResponse
+                (fun ex -> onResponse (Error ex.Message))
         | None ->
             { model with
                 CurrentPage = Algemeen
@@ -152,7 +152,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     | InterviewFormReturn (Form.Submit (result, onResponse)) ->
         match model.DemografischeGegevens with
         | Some demografisch ->
-            model, Cmd.OfAsync.result (api.submitInterview model.InterviewId (demografisch, result) |> Async.map onResponse)
+            model, Cmd.OfAsync.either (api.submitInterview model.InterviewId) (demografisch, result)
+                onResponse
+                (fun ex -> onResponse (Error ex.Message))
         | None ->
             { model with
                 CurrentPage = Demografisch },
@@ -168,7 +170,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     | LogboekFormReturn (Form.Submit (result, onResponse)) ->
         match model.RespondentId with
         | Some respondentId ->
-            model, Cmd.OfAsync.result (api.submitLog respondentId result |> Async.map onResponse)
+            model, Cmd.OfAsync.either (api.submitLog respondentId) result
+                onResponse
+                (fun ex -> onResponse (Error ex.Message))
         | None ->
             { model with
                 CurrentPage = Algemeen
