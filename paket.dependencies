@@ -25,5 +25,6 @@ nuget Fake.Core.Target
 nuget Fake.IO.FileSystem
 nuget Farmer
 nuget SQLitePCLRaw.bundle_e_sqlcipher
+nuget Symbolica.Extensions.Configuration.FSharp
 nuget System.Data.Sqlite.Core
 nuget Validus

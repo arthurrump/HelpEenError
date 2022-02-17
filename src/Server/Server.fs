@@ -1,17 +1,37 @@
 module Server
 
 open System
-
 open System.Data
+open Microsoft.AspNetCore.Http
 open Microsoft.Data.Sqlite
+open Microsoft.Extensions.Configuration
+open Microsoft.Extensions.Logging
 open Donald
 open FsToolkit.ErrorHandling.ResultCE
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 open Saturn
+open Symbolica.Extensions.Configuration.FSharp
 
 open Shared.Models
 open Shared.Api
+
+type Config =
+    { Database: DatabaseConfig }
+    static member Bind =
+        bind {
+            let! database = Bind.section "Database" DatabaseConfig.Bind
+            return { Database = database }
+        }
+and DatabaseConfig =
+    { Filepath: string
+      Password: string }
+    static member Bind =
+        bind {
+            let! filepath = Bind.valueAt "Filepath" Bind.string
+            let! password = Bind.valueAt "Password" Bind.string
+            return { Filepath = filepath; Password = password }
+        }
 
 type Storage(conn: IDbConnection, ?tran: IDbTransaction) =
 
@@ -157,14 +177,6 @@ type Storage(conn: IDbConnection, ?tran: IDbTransaction) =
             conn.Close()
             tran |> Option.iter (fun tran -> tran.Dispose ())
 
-let dbPath = "test.db"
-let dbPassword = "test"
-
-let storage = new Storage(dbPath, dbPassword)
-
-storage.Initialize()
-|> ignore
-
 let dbErrorMessage = function
     | DbConnectionError _
     | DbTransactionError _ ->
@@ -175,7 +187,7 @@ let dbErrorMessage = function
     | DataReaderOutOfRangeError _ ->
         "Oeps, er is iets fout gegaan bij het lezen uit de database. Probeer het later nog eens."
 
-let api =
+let api (storage: Storage) =
     let grantToestemming () =
         async {
             return Ok (RespondentId (Guid.NewGuid ()))
@@ -236,10 +248,25 @@ let api =
       submitLog = submitLog
       deleteLog = deleteLog }
 
+let config =
+    let iconfig =
+        ConfigurationBuilder()
+            .AddJsonFile("appsettings.json", optional = true)
+            .AddEnvironmentVariables()
+            .AddKeyPerFile("/run/secrets", optional = true)
+            .Build()
+    Binder.eval iconfig Config.Bind
+    |> BindResult.getOrFail
+
+let storage = new Storage (config.Database.Filepath, config.Database.Password)
+
 let webApp =
     Remoting.createApi ()
+    |> Remoting.withErrorHandler (fun ex (routeInfo: RouteInfo<HttpContext>) ->
+        printfn "%s" (ex.ToString())
+        Propagate ex)
     |> Remoting.withRouteBuilder Route.builder
-    |> Remoting.fromValue api
+    |> Remoting.fromValue (api storage)
     |> Remoting.buildHttpHandler
 
 let app =
@@ -249,6 +276,10 @@ let app =
         memory_cache
         use_static "public"
         use_gzip
+        error_handler (fun ex logger ->
+            logger.LogCritical(ex.ToString())
+            pipeline { text $"500 - Er is iets fout gegaan: {ex.Message}" }
+        )
     }
 
 run app

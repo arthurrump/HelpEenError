@@ -5,3 +5,4 @@ System.Data.Sqlite.Core
 SQLitePCLRaw.bundle_e_sqlcipher
 Microsoft.Data.Sqlite
 FsToolkit.ErrorHandling
+Symbolica.Extensions.Configuration.FSharp
