@@ -14,6 +14,7 @@ type Page =
     | Demografisch
     | Interview
     | Logboek
+    | Bedankt
 
 [<RequireQualifiedAccess>]
 type NotificationType =
@@ -35,6 +36,7 @@ type Model =
     { CurrentPage: Page
       ToestemmingForm: ToestemmingForm.Model
       RespondentId: RespondentId option
+      RegistrationMoment: DateTime option
       DemografischForm: DemografischForm.Model
       DemografischeGegevens: Demografisch.Result option
       InterviewForm: InterviewForm.Model
@@ -57,6 +59,16 @@ type Msg =
     | LogboekDeleteEntryResponse of LogId * Result<unit, string>
     | ShowNotification of NotificationType * message: string
     | DismissNotification of Guid
+    | ExpireRegistration
+
+let expiration = TimeSpan.FromHours(3)
+let isExpired from = (DateTime.Now - from) > expiration
+let isSomeExpired = Option.map isExpired >> Option.defaultValue false
+let (|IsSomeExpired|) = isSomeExpired
+let expireCmd (timespan: TimeSpan) =
+    Cmd.ofSub (fun dispatch ->
+        printfn "Expiring registration in %f s" timespan.TotalSeconds
+        setTimeout (fun () -> dispatch ExpireRegistration) (max 0 (int timespan.TotalMilliseconds)) |> ignore)
 
 let api =
     Remoting.createApi ()
@@ -65,10 +77,13 @@ let api =
 
 let init (persisted: Model option) : Model * Cmd<Msg> =
     match persisted with
-    | None ->
+    | None
+    | Some { RegistrationMoment = IsSomeExpired true }
+    | Some { CurrentPage = Bedankt } ->
         { CurrentPage = Algemeen
-          RespondentId = None
           ToestemmingForm = ToestemmingForm.init None
+          RespondentId = None
+          RegistrationMoment = None
           DemografischForm = DemografischForm.init None
           DemografischeGegevens = None
           InterviewForm = InterviewForm.init None
@@ -78,9 +93,16 @@ let init (persisted: Model option) : Model * Cmd<Msg> =
           Notifications = [] }
         , Cmd.none
     | Some p ->
+        let cmd =
+            match p.RegistrationMoment with
+            | Some date ->
+                expireCmd (expiration - (DateTime.Now - date))
+            | None ->
+                Cmd.none
         { CurrentPage = p.CurrentPage
-          RespondentId = p.RespondentId
           ToestemmingForm = ToestemmingForm.init (Some p.ToestemmingForm)
+          RespondentId = p.RespondentId
+          RegistrationMoment = p.RegistrationMoment
           DemografischForm = DemografischForm.init (Some p.DemografischForm)
           DemografischeGegevens = p.DemografischeGegevens
           InterviewForm = InterviewForm.init (Some p.InterviewForm)
@@ -88,7 +110,7 @@ let init (persisted: Model option) : Model * Cmd<Msg> =
           LogboekForm = LogboekForm.init (Some p.LogboekForm)
           Logboek = p.Logboek |> List.map (fun (id, _, log) -> (id, LogState.Normal, log))
           Notifications = [] }
-        , Cmd.none
+        , cmd
 
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     match msg with
@@ -121,7 +143,10 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     | ToestemmingFormReturn (Form.Submitted (_, response)) ->
         match response with
         | ToestemmingForm.ToestemmingGranted respondentId ->
-            { model with RespondentId = Some respondentId }, Cmd.none
+            { model with
+                RespondentId = Some respondentId
+                RegistrationMoment = Some DateTime.Now },
+            expireCmd expiration
         | ToestemmingForm.ToestemmingRevoked ->
             let model, cmd = init None
             let notif = Cmd.ofMsg (ShowNotification (NotificationType.Success, "Je hebt je toestemming ingetrokken. Alle gegevens zijn verwijderd."))
@@ -228,6 +253,10 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     | DismissNotification guid ->
         let notifications = List.filter (fun n -> n.Guid <> guid) model.Notifications
         { model with Notifications = notifications }, Cmd.none
+
+    | ExpireRegistration ->
+        let model, cmd = init None
+        { model with CurrentPage = Bedankt }, cmd
 
 open Feliz
 open Feliz.Bulma
@@ -376,6 +405,16 @@ let logboek (model: Model) (dispatch: Msg -> unit) =
         ]
     ]
 
+let bedankt (model: Model) (dispatch: Msg -> unit) =
+    Box.withHeader (dispatch, title = "Bedankt", previousPage = Algemeen, children = [
+        Html.p [
+            Html.text "Bedankt voor je deelname aan dit onderzoek! Je antwoorden zijn anoniem opgeslagen en dus niet meer aan jou te koppelen. "
+            Html.text "Als je nog vragen hebt over het onderzoek, kun je contact opnemen met Arthur Rump via "
+            Html.a [ color.hasTextLink; prop.href "mailto:a.h.j.rump@student.utwente.nl"; prop.text "a.h.j.rump@student.utwente.nl" ]
+            Html.text ". Als je hebt aangegeven dat je mee wilt doen aan een interview, dan nemen we binnenkort contact met je op."
+        ]
+    ])
+
 let view (model: Model) (dispatch: Msg -> unit) =
     Bulma.hero [
         hero.isFullHeight
@@ -400,6 +439,8 @@ let view (model: Model) (dispatch: Msg -> unit) =
                                 interview model dispatch
                             | Logboek ->
                                 logboek model dispatch
+                            | Bedankt ->
+                                bedankt model dispatch
 
                             if not (List.isEmpty model.Notifications) then
                                 Bulma.box [
