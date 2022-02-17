@@ -252,13 +252,19 @@ let config =
     let iconfig =
         ConfigurationBuilder()
             .AddJsonFile("appsettings.json", optional = true)
-            .AddEnvironmentVariables()
+            .AddEnvironmentVariables(prefix = "HELPEENERROR_")
             .AddKeyPerFile("/run/secrets", optional = true)
             .Build()
     Binder.eval iconfig Config.Bind
     |> BindResult.getOrFail
 
 let storage = new Storage (config.Database.Filepath, config.Database.Password)
+match storage.Initialize() with
+| Ok _ ->
+    printfn "Initialized storage"
+| Error dbErr ->
+    printfn "Failed to initialize storage: %A" dbErr
+    exit 1
 
 let webApp =
     Remoting.createApi ()
