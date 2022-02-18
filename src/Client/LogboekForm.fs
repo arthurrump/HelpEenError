@@ -70,8 +70,8 @@ module Internal =
             Html.p [
                 Html.text "Op deze pagina kun je bijhouden welke fouten je tegenkomt tijdens deze les. Je hoeft alleen fouten toe te voegen "
                 Html.text "waarvan je niet direct weet wat je ermee moet doen. We kijken naar twee soorten fouten: je kunt een foutmelding krijgen "
-                Html.text "als Python vindt dat er iets niet klopt aan de code, of het kan zijn dat je programma wel uitgevoerd wordt, maar niet "
-                Html.text "doet wat de bedoeling was."
+                Html.text "als Python vindt dat er iets niet klopt aan de code (te herkennen aan de rode tekst in de Console van Replit), "
+                Html.text "of het kan zijn dat je programma wel uitgevoerd wordt, maar niet doet wat de bedoeling was."
             ]
         ]
         Form.UI.radio(

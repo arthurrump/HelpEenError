@@ -322,24 +322,24 @@ let algemeenAkkoord (model: Model) (dispatch: Msg -> unit) =
         Bulma.content [
             Html.p [
                 Html.text "Iedereen maakt fouten. Dat is goed, want van fouten leer je. Maar zoals je misschien wel gemerkt hebt, kan een klein foutje bij "
-                Html.text "het programmeren ervoor zorgen dat je helemaal vast loopt. Je krijgt bijvoorbeeld een foutmelding, en kunt pas zien of de rest "
+                Html.text "het programmeren ervoor zorgen dat je helemaal vastloopt. Je krijgt bijvoorbeeld een foutmelding, en kunt pas zien of de rest "
                 Html.text "van je programma ook werkt als je die fout hebt opgelost."
             ]
             Html.p [
-                Html.text "Normaal gesproken zou je tijdens een les informatica op dat moment je docent om hulp vragen, die dan uitlegd wat er in jouw specifieke "
+                Html.text "Normaal gesproken zou je tijdens een les informatica op dat moment je docent om hulp vragen, die dan uitlegt wat er in jouw specifieke "
                 Html.text "geval fout gaat en wat je eraan kan doen. Omdat jullie informatica volgen via Co-Teach, is dat helaas niet altijd mogelijk. "
                 Html.text "Daarom willen wij onderzoeken hoe we jullie beter kunnen helpen met het oplossen van de fouten die je maakt bij het programmeren, "
                 Html.text "ook zonder dat daar een docent bij nodig is."
             ]
             Html.p [
-                Html.text "Om dat te doen willen we weten op welke fouten jullie vastlopen. Welke foutmeldingen krijg je waarvan je niet begrijpt wat ze "
-                Html.text "betekenen? Wat doet je programma, terwijl je eigenlijk verwacht had dat het iets anders zou doen? Om daar achter te komen vragen we "
-                Html.text "jullie om gedurende één les in dit logboek bij te houden op welke fouten jullie vastlopen."
+                Html.text "Om dat te doen, willen we weten op welke fouten jullie vastlopen. Welke foutmeldingen krijg je waarvan je niet begrijpt wat ze "
+                Html.text "betekenen? Wat doet je programma, terwijl je eigenlijk verwacht had dat het iets anders zou doen? Om daar achter te komen, vragen we "
+                Html.text "jullie om gedurende één les in dit logboek bij te houden welke programmeerfouten jullie tegenkomen."
             ]
             Html.p [
-                Html.text "Alle gegevens die je invult worden anoniem verwerkt, tenzij bij een vraag anders vermeld is. Na het starten van het logboek "
+                Html.text "Alle gegevens die je invult worden anoniem verwerkt, tenzij dat bij een vraag anders vermeld is. Na het starten van het logboek "
                 Html.text "blijven de gegevens drie uur lang aan jouw computer gekoppeld. Tot die tijd kun je altijd terugkomen naar deze website om aan te "
-                Html.text "passen wat je hebt ingevuld, of je toestemming in te trekken en alle gegevens te verwijderen. Dat kun je doen door terug te komen "
+                Html.text "passen wat je hebt ingevuld, of om je toestemming in te trekken en alle gegevens te verwijderen. Dat kun je doen door terug te komen "
                 Html.text "naar deze pagina, het vinkje hieronder weer uit te schakelen en op de knop 'Opslaan' te klikken. Na drie uur "
                 Html.text "worden de gegevens volledig geanonimiseerd en kunnen ze dus niet meer aan jou gekoppeld worden."
             ]

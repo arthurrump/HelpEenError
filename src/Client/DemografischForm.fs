@@ -50,7 +50,7 @@ module Internal =
         Form.UI.likert(
             title = "Hoe goed ben je in programmeren?",
             name = "programmeervaardigheid",
-            left = "Heel slecht",
+            left = "Niet zo goed",
             right = "Heel goed",
             field = model.ProgrammeerVaardigheid,
             dispatch = (ProgrammeerVaardigheid >> dispatch))
