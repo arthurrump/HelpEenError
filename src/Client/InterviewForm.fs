@@ -51,9 +51,8 @@ module Internal =
           ValidateAllFields = Interview.Form.validateAll config }
 
     let view (model: Model) dispatch = [
-        Html.p [
-            spacing.mb5
-            prop.text ("Met het invullen van dit logboek help je ons al heel veel, maar we gaan ook graag met een aantal "
+        Bulma.content [
+            Html.p ("Met het invullen van dit logboek help je ons al heel veel, maar we gaan ook graag met een aantal "
                 + "van jullie in gesprek over de fouten en foutmeldingen die jullie vinden tijdens het programmeren. "
                 + "Zo'n interview duurt ongeveer 15 minuten en doe je samen met 1 of 2 klasgenoten.")
         ]
@@ -64,10 +63,18 @@ module Internal =
             field = model.Meedoen,
             dispatch = (Meedoen >> dispatch))
         if model.Meedoen.Value = Some "ja" then
-            Html.p [
-                spacing.mb5
-                prop.text ("Wat leuk dat je mee wilt doen! Vul hieronder je gegevens in, zodat we contact met je op kunnen nemen. "
-                    + "We koppelen deze informatie niet aan de errors die je straks invult, die blijven volledig anoniem.")
+            Bulma.content [
+                Html.p [
+                    prop.text ("Wat leuk dat je mee wilt doen! Vul hieronder je gegevens in, zodat we contact met je op kunnen nemen. "
+                        + "We koppelen deze informatie niet aan het logboek dat je straks invult, dat blijft volledig anoniem. "
+                        + "Als je je later bedenkt, kun je terugkomen naar deze pagina en je antwoord aanpassen. "
+                        + "De gegevens die je hier invult worden alleen gebruikt om je uit te nodigen voor een interview "
+                        + "en aan het eind van het onderzoek vernietigd.")
+                ]
+                Html.p [
+                    prop.text ("Je bent niet verplicht om mee te doen als je dit formulier invult. Je kunt op elk moment besluiten "
+                        + "toch niet mee te doen aan een interview, zonder enige consequenties. ")
+                ]
             ]
             Form.UI.textbox(
                 title = "Hoe heet je?",
@@ -98,9 +105,9 @@ module Internal =
                 field = model.OuderDan16,
                 dispatch = (OuderDan16 >> dispatch))
             if model.OuderDan16.Value = Some "nee" then
-                Html.p [
-                    spacing.mb5
-                    prop.text "Omdat je nog geen 16 bent, moeten je ouders ook toestemming geven om mee te doen aan een interview. Vul hieronder het emailadres van een van je ouders in."
+                Bulma.content [
+                    Html.p ("Omdat je nog geen 16 bent, moeten je ouders ook toestemming geven om mee te doen aan een interview. "
+                        + "Vul hieronder het emailadres van een van je ouders in.")
                 ]
                 Form.UI.textbox(
                     title = "Emailadres van een van je ouders",

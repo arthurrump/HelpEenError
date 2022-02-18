@@ -38,9 +38,8 @@ module Internal =
           ValidateAllFields = Demografisch.Form.validateAll config }
 
     let view (model: Model) (dispatch: Msg -> unit) = [
-        Html.p [
-            spacing.mb5
-            prop.text "Fijn dat je mee wilt doen aan dit onderzoek! Voor we verdergaan, willen we nog een paar dingen van je weten."
+        Bulma.content [
+            Html.p "Fijn dat je mee wilt doen aan dit onderzoek! Voor we verdergaan, willen we nog een paar dingen van je weten."
         ]
         Form.UI.radio(
             title = "Wat is je schoolniveau?",

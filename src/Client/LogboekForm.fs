@@ -66,6 +66,14 @@ module Internal =
 
     let view (model: Model) (dispatch: Msg -> unit) = [
         let form = model.Form
+        Bulma.content [
+            Html.p [
+                Html.text "Op deze pagina kun je bijhouden welke fouten je tegenkomt tijdens deze les. Je hoeft alleen fouten toe te voegen "
+                Html.text "waarvan je niet direct weet wat je ermee moet doen. We kijken naar twee soorten fouten: je kunt een foutmelding krijgen "
+                Html.text "als Python vindt dat er iets niet klopt aan de code, of het kan zijn dat je programma wel uitgevoerd wordt, maar niet "
+                Html.text "doet wat de bedoeling was."
+            ]
+        ]
         Form.UI.radio(
             title = "Wat gaat er mis?",
             name = "type",
@@ -93,6 +101,7 @@ module Internal =
         if Field.validate config.Type form.Type |> Result.isOk then
             Form.UI.textarea(
                 title = "Wat ga je doen om de fout op te lossen?",
+                placeholder = "Bijvoorbeeld een klasgenoot om hulp vragen, de code nog eens rustig doorlezen, in Fundament opzoeken hoe de code eruit moet zien, ...",
                 field = form.Vervolgactie,
                 dispatch = (Vervolgactie >> dispatch))
     ]
