@@ -88,30 +88,20 @@ module Interview =
           Naam: FieldConfig<string, string>
           Klas: FieldConfig<string, string>
           School: FieldConfig<string, string>
-          Email: FieldConfig<string, string>
-          OuderDan16: FieldConfig<string, bool>
-          EmailOuders: FieldConfig<string, string> }
+          Email: FieldConfig<string, string> }
 
     type Form =
         { Meedoen: Field<string>
           Naam: Field<string>
           Klas: Field<string>
           School: Field<string>
-          Email: Field<string>
-          OuderDan16: Field<string>
-          EmailOuders: Field<string> }
-
-    [<RequireQualifiedAccess>]
-    type Toestemming =
-        | Alleen
-        | Ouders of email: string
+          Email: Field<string> }
 
     type Contact =
         { Naam: string
           Klas: string
           School: string
-          Email: string
-          Toestemming: Toestemming }
+          Email: string }
 
     [<RequireQualifiedAccess>]
     type Result =
@@ -128,34 +118,13 @@ module Interview =
                     and! klas = Field.validate c.Klas m.Klas
                     and! school = Field.validate c.School m.School
                     and! email = Field.validate c.Email m.Email
-                    and! ouderDan16 = Field.validate c.OuderDan16 m.OuderDan16
-                    let! toestemming =
-                        if ouderDan16 then
-                            validate {
-                                return Toestemming.Alleen
-                            }
-                        else
-                            validate {
-                                let! emailOuders = Field.validate c.EmailOuders m.EmailOuders
-                                return Toestemming.Ouders emailOuders
-                            }
                     return Result.Ja
                         { Naam = naam
                           Klas = klas
                           School = school
-                          Email = email
-                          Toestemming = toestemming }
+                          Email = email }
                 else
                     return Result.Nee
-            }
-        let toestemming (m: Toestemming) =
-            validate {
-                match m with
-                | Toestemming.Alleen ->
-                    return Toestemming.Alleen
-                | Toestemming.Ouders emailOuders ->
-                    let! email = Validate.email "Email Ouders" emailOuders
-                    return Toestemming.Ouders email
             }
         let contact (m: Contact) =
             validate {
@@ -163,13 +132,11 @@ module Interview =
                 and! klas = Validate.nietLeeg "Klas" m.Klas
                 and! school = Validate.nietLeeg "School" m.School
                 and! email = Validate.email "Email" m.Email
-                and! toestemming = toestemming m.Toestemming
                 return
                     { Naam = naam
                       Klas = klas
                       School = school
-                      Email = email
-                      Toestemming = toestemming }
+                      Email = email }
             }
         let result (m: Result) =
             validate {
@@ -192,20 +159,14 @@ module Interview =
               School =
                 Field.config ("School", Validators.NL.required Validate.nietLeeg)
               Email =
-                Field.config ("Email", Validators.NL.required Validate.email)
-              OuderDan16 =
-                Field.config ("Ouder dan 16", Validators.NL.required Validate.jaNee)
-              EmailOuders =
-                Field.config ("Email Ouders", Validators.NL.required Validate.email) }
+                Field.config ("Email", Validators.NL.required Validate.email) }
 
         let init () : Form =
             { Meedoen = Field.init ()
               Naam = Field.init ()
               Klas = Field.init ()
               School = Field.init ()
-              Email = Field.init ()
-              OuderDan16 = Field.init ()
-              EmailOuders = Field.init () }
+              Email = Field.init () }
 
         let validateAll (config: FormConfig) (form: Form) =
             { form with
@@ -213,9 +174,7 @@ module Interview =
                 Naam = Field.update config.Naam Field.Validate form.Naam
                 Klas = Field.update config.Klas Field.Validate form.Klas
                 School = Field.update config.School Field.Validate form.School
-                Email = Field.update config.Email Field.Validate form.Email
-                OuderDan16 = Field.update config.OuderDan16 Field.Validate form.OuderDan16
-                EmailOuders = Field.update config.EmailOuders Field.Validate form.EmailOuders }
+                Email = Field.update config.Email Field.Validate form.Email }
 
 module Logboek =
     type FormConfig =

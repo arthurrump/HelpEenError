@@ -16,8 +16,6 @@ module Internal =
         | Klas of Field.Msg<string>
         | School of Field.Msg<string>
         | Email of Field.Msg<string>
-        | OuderDan16 of Field.Msg<string>
-        | EmailOuders of Field.Msg<string>
 
     let config =
         Interview.Form.config ()
@@ -37,10 +35,6 @@ module Internal =
             { model with School = Field.update config.School msg model.School }
         | Email msg ->
             { model with Email = Field.update config.Email msg model.Email }
-        | OuderDan16 msg ->
-            { model with OuderDan16 = Field.update config.OuderDan16 msg model.OuderDan16 }
-        | EmailOuders msg ->
-            { model with EmailOuders = Field.update config.EmailOuders msg model.EmailOuders }
 
     let form =
         { SubmitButton = "Opslaan"
@@ -98,21 +92,6 @@ module Internal =
                 title = "Wat is je emailadres?",
                 field = model.Email,
                 dispatch = (Email >> dispatch))
-            Form.UI.radio(
-                title = "Ben je 16 jaar of ouder?",
-                name = "jongerdan16",
-                options = [ "ja", "Ja"; "nee", "Nee" ],
-                field = model.OuderDan16,
-                dispatch = (OuderDan16 >> dispatch))
-            if model.OuderDan16.Value = Some "nee" then
-                Bulma.content [
-                    Html.p ("Omdat je nog geen 16 bent, moeten je ouders ook toestemming geven om mee te doen aan een interview. "
-                        + "Vul hieronder het emailadres van een van je ouders in.")
-                ]
-                Form.UI.textbox(
-                    title = "Emailadres van een van je ouders",
-                    field = model.EmailOuders,
-                    dispatch = (EmailOuders >> dispatch))
     ]
 
 type Model = Form.Model<Internal.Model>

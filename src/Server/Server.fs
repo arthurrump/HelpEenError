@@ -77,10 +77,7 @@ type Storage(conn: IDbConnection, ?tran: IDbTransaction) =
                 naam TEXT NOT NULL,
                 klas TEXT NOT NULL,
                 school TEXT NOT NULL,
-                email TEXT NOT NULL,
-                toestemming TEXT NOT NULL,
-                emailouders TEXT,
-                CONSTRAINT toestemming_emailouders CHECK (toestemming = 'alleen' OR emailouders NOT NULL)
+                email TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS logboek (
                 id TEXT PRIMARY KEY,
@@ -116,8 +113,8 @@ type Storage(conn: IDbConnection, ?tran: IDbTransaction) =
     member __.AddOrReplaceInterview (InterviewId id, demografisch: Demografisch.Result, interview: Interview.Contact) =
         conn
         |> Db.newCommand """
-            INSERT OR REPLACE INTO interviews (id, schoolniveau, programmeervaardigheid, programmeerervaring, naam, klas, school, email, toestemming, emailouders)
-            VALUES (@id, @schoolniveau, @programmeervaardigheid, @programmeerervaring, @naam, @klas, @school, @email, @toestemming, @emailouders)"""
+            INSERT OR REPLACE INTO interviews (id, schoolniveau, programmeervaardigheid, programmeerervaring, naam, klas, school, email)
+            VALUES (@id, @schoolniveau, @programmeervaardigheid, @programmeerervaring, @naam, @klas, @school, @email)"""
         |> Db.setParams
             [ "id", SqlType.String (id.ToString())
               "schoolniveau", SqlType.String demografisch.Schoolniveau
@@ -126,15 +123,7 @@ type Storage(conn: IDbConnection, ?tran: IDbTransaction) =
               "naam", SqlType.String interview.Naam
               "klas", SqlType.String interview.Klas
               "school", SqlType.String interview.School
-              "email", SqlType.String interview.Email
-              "toestemming", SqlType.String (
-                match interview.Toestemming with
-                | Interview.Toestemming.Alleen -> "alleen"
-                | Interview.Toestemming.Ouders _ -> "ouders")
-              "emailouders", (
-                match interview.Toestemming with
-                | Interview.Toestemming.Alleen -> SqlType.Null
-                | Interview.Toestemming.Ouders emailouders -> SqlType.String emailouders) ]
+              "email", SqlType.String interview.Email ]
         |> dbExec
 
     member __.DeleteInterview (InterviewId id) =
