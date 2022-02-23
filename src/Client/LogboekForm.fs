@@ -88,7 +88,16 @@ module Internal =
                 field = form.FoutmeldingMelding,
                 dispatch = (FoutmeldingMelding >> dispatch),
                 props = [ text.isFamilyMonospace; prop.rows 5 ],
-                placeholder = "Voorbeeld:\n" + model.FoutmeldingPlaceholder)
+                placeholder = "Voorbeeld:\n" + model.FoutmeldingPlaceholder,
+                explainer = [
+                    Html.p [
+                        prop.className "is-size-7 mb-2"
+                        prop.children [
+                            Html.text "Kopieer de foutmelding uit de Console van Replit en plak die hier. Let op: selecteer de foutmelding en "
+                            Html.text "gebruik de rechtermuisknop om te kopiëren. De sneltoets Ctrl+C werkt niet in de Console."
+                        ]
+                    ]
+                ])
         if form.Type.Value = Some "onverwacht-gedrag" then
             Form.UI.textarea(
                 title = "Wat verwachtte je dat het programma zou doen?",
