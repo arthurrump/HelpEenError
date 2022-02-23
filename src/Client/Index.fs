@@ -320,37 +320,28 @@ type Box =
 let algemeenAkkoord (model: Model) (dispatch: Msg -> unit) =
     Box.withHeader (dispatch, title = "Welkom", nOutOfN = (1, 4), children = [
         Bulma.content [
+            Html.p "Iedereen maakt fouten. Dat is goed, want van fouten leer je. Maar zoals je misschien wel gemerkt hebt, kan een klein foutje bij het programmeren ervoor zorgen dat je helemaal vastloopt. Normaal gesproken zou je tijdens een les informatica dan je docent om hulp vragen, die je weer op weg helpt. Omdat jullie informatica volgen via Co-Teach, is dat helaas niet altijd mogelijk."
+            Html.p "Daarom onderzoeken wij hoe we jullie beter kunnen helpen met het oplossen van de fouten die je maakt bij het programmeren, ook zonder dat daar een docent bij nodig is. We willen weten op welke fouten jullie vastlopen en dus vragen we jullie om gedurende één les in dit logboek bij te houden welke programmeerfouten jullie tegenkomen."
             Html.p [
-                Html.text "Iedereen maakt fouten. Dat is goed, want van fouten leer je. Maar zoals je misschien wel gemerkt hebt, kan een klein foutje bij "
-                Html.text "het programmeren ervoor zorgen dat je helemaal vastloopt. Je krijgt bijvoorbeeld een foutmelding, en kunt pas zien of de rest "
-                Html.text "van je programma ook werkt als je die fout hebt opgelost."
-            ]
-            Html.p [
-                Html.text "Normaal gesproken zou je tijdens een les informatica op dat moment je docent om hulp vragen, die dan uitlegt wat er in jouw specifieke "
-                Html.text "geval fout gaat en wat je eraan kan doen. Omdat jullie informatica volgen via Co-Teach, is dat helaas niet altijd mogelijk. "
-                Html.text "Daarom willen wij onderzoeken hoe we jullie beter kunnen helpen met het oplossen van de fouten die je maakt bij het programmeren, "
-                Html.text "ook zonder dat daar een docent bij nodig is."
-            ]
-            Html.p [
-                Html.text "Om dat te doen, willen we weten op welke fouten jullie vastlopen. Welke foutmeldingen krijg je waarvan je niet begrijpt wat ze "
-                Html.text "betekenen? Wat doet je programma, terwijl je eigenlijk verwacht had dat het iets anders zou doen? Om daar achter te komen, vragen we "
-                Html.text "jullie om gedurende één les in dit logboek bij te houden welke programmeerfouten jullie tegenkomen."
-            ]
-            Html.p [
-                Html.text "Alle gegevens die je invult worden anoniem verwerkt, tenzij dat bij een vraag anders vermeld is. Na het starten van het logboek "
-                Html.text "blijven de gegevens drie uur lang aan jouw computer gekoppeld. Tot die tijd kun je altijd terugkomen naar deze website om aan te "
-                Html.text "passen wat je hebt ingevuld, of om je toestemming in te trekken en alle gegevens te verwijderen. Dat kun je doen door terug te komen "
-                Html.text "naar deze pagina, het vinkje hieronder weer uit te schakelen en op de knop 'Opslaan' te klikken. Na drie uur "
-                Html.text "worden de gegevens volledig geanonimiseerd en kunnen ze dus niet meer aan jou gekoppeld worden."
-            ]
-            Html.p [
-                Html.text "Alle gegevens die je invult, worden uitsluitend gebruikt voor het uitvoeren van dit onderzoek. Meedoen is volledig vrijwillig, "
-                Html.text "je bent tot niets verplicht. Zoals hiervoor beschreven, kun je tot drie uur na het starten je toestemming intrekken en alle "
-                Html.text "ingevulde gegevens verwijderen. Je kunt op elk moment stoppen met het invullen van het logboek. Alle gegevens worden versleuteld "
-                Html.text "opgeslagen en alleen gebruikt voor dit onderzoek. Het onderzoek wordt uitgevoerd door Arthur Rump van de faculteit Behavioural, "
-                Html.text "Management and Social Sciences op de Universiteit Twente. Als je nog vragen hebt, kun je die stellen via "
+                Html.text "Het onderzoek wordt uitgevoerd door Arthur Rump van de faculteit Behavioural, Management and Social Sciences op de Universiteit Twente. Als je vragen hebt, kun je die stellen via "
                 Html.a [ color.hasTextLink; prop.href "mailto:a.h.j.rump@student.utwente.nl"; prop.text "a.h.j.rump@student.utwente.nl" ]
                 Html.text "."
+            ]
+            Html.p "Dit moet je weten over dit logboek:"
+            Html.ul [
+                Html.li "Alle gegevens worden versleuteld opgeslagen en alleen gebruikt voor dit onderzoek."
+                Html.li "Alle gegevens  worden anoniem verwerkt, tenzij dat bij een vraag anders vermeld is."
+                Html.li [
+                    Html.text "Vanaf het starten van het logboek blijven de gegevens drie uur lang aan jouw computer gekoppeld. Daarna worden je antwoorden volledig geanonimiseerd en kunnen ze dus niet meer aan jou gelinkt worden."
+                    Html.ul [
+                        spacing.mt1
+                        prop.children [
+                            Html.li "Tot die tijd kun je terugkomen naar deze website om aan te passen wat je hebt ingevuld, of om je toestemming in te trekken en alle gegevens te verwijderen. Dat kun je doen door terug te komen naar deze pagina, het vinkje hieronder weer uit te schakelen en op de knop 'Opslaan' te klikken."
+                        ]
+                    ]
+                ]
+                Html.li "Meedoen is volledig vrijwillig, je bent tot niets verplicht."
+                Html.li "Je kunt op elk moment stoppen met het invullen van het logboek."
             ]
             Html.p [
                 Html.text "Als je mee wilt doen aan het onderzoek, en hiermee akkoord gaat, zet dan het vinkje hieronder aan en ga verder naar het logboek."
