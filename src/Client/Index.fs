@@ -12,7 +12,6 @@ open System
 type Page =
     | Algemeen
     | Demografisch
-    | Interview
     | Logboek
     | Bedankt
 
@@ -39,8 +38,6 @@ type Model =
       RegistrationMoment: DateTime option
       DemografischForm: DemografischForm.Model
       DemografischeGegevens: Demografisch.Result option
-      InterviewForm: InterviewForm.Model
-      InterviewId: InterviewId option
       LogboekForm: LogboekForm.Model
       Logboek: (LogId * LogState * Logboek.Result) list
       Notifications: Notification list }
@@ -51,8 +48,6 @@ type Msg =
     | ToestemmingFormReturn of ToestemmingForm.ReturnMsg<Msg>
     | DemografischFormInternal of DemografischForm.Msg
     | DemografischFormReturn of DemografischForm.ReturnMsg<Msg>
-    | InterviewFormInternal of InterviewForm.Msg
-    | InterviewFormReturn of InterviewForm.ReturnMsg<Msg>
     | LogboekFormInternal of LogboekForm.Msg
     | LogboekFormReturn of LogboekForm.ReturnMsg<Msg>
     | LogboekDeleteEntry of LogId
@@ -86,8 +81,6 @@ let init (persisted: Model option) : Model * Cmd<Msg> =
           RegistrationMoment = None
           DemografischForm = DemografischForm.init None
           DemografischeGegevens = None
-          InterviewForm = InterviewForm.init None
-          InterviewId = None
           LogboekForm = LogboekForm.init None
           Logboek = []
           Notifications = [] }
@@ -105,8 +98,6 @@ let init (persisted: Model option) : Model * Cmd<Msg> =
           RegistrationMoment = p.RegistrationMoment
           DemografischForm = DemografischForm.init (Some p.DemografischForm)
           DemografischeGegevens = p.DemografischeGegevens
-          InterviewForm = InterviewForm.init (Some p.InterviewForm)
-          InterviewId = p.InterviewId
           LogboekForm = LogboekForm.init (Some p.LogboekForm)
           Logboek = p.Logboek |> List.map (fun (id, _, log) -> (id, LogState.Normal, log))
           Notifications = [] }
@@ -127,7 +118,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
                 (Result.map ToestemmingForm.ToestemmingGranted >> onResponse)
                 (fun ex -> onResponse (Error ex.Message))
         | Some respondentId, false ->
-            model, Cmd.OfAsync.either api.revokeToestemming (respondentId, model.InterviewId)
+            model, Cmd.OfAsync.either api.revokeToestemming respondentId
                 (Result.map (fun _ -> ToestemmingForm.ToestemmingRevoked) >> onResponse)
                 (fun ex -> onResponse (Error ex.Message))
         | Some respondentId, true ->
@@ -167,27 +158,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
                 ToestemmingForm = ToestemmingForm.init None },
             Cmd.ofMsg (ShowNotification (NotificationType.Error, "Je hebt nog geen toestemming gegeven, of je sessie is verlopen."))
     | DemografischFormReturn Form.Next ->
-        { model with CurrentPage = Interview }, Cmd.none
+        { model with CurrentPage = Logboek }, Cmd.none
     | DemografischFormReturn (Form.Submitted (result, _)) ->
         { model with DemografischeGegevens = Some result }, Cmd.none
-
-    | InterviewFormInternal msg ->
-        let form, cmd = InterviewForm.update (InterviewFormReturn, InterviewFormInternal) msg model.InterviewForm
-        { model with InterviewForm = form }, cmd
-    | InterviewFormReturn (Form.Submit (result, onResponse)) ->
-        match model.DemografischeGegevens with
-        | Some demografisch ->
-            model, Cmd.OfAsync.either (api.submitInterview model.InterviewId) (demografisch, result)
-                onResponse
-                (fun ex -> onResponse (Error ex.Message))
-        | None ->
-            { model with
-                CurrentPage = Demografisch },
-            Cmd.ofMsg (ShowNotification (NotificationType.Error, "Je hebt hier nog geen gegevens ingevuld, of je sessie is verlopen."))
-    | InterviewFormReturn Form.Next ->
-        { model with CurrentPage = Logboek }, Cmd.none
-    | InterviewFormReturn (Form.Submitted (_, interviewId)) ->
-        { model with InterviewId = Some interviewId }, Cmd.none
 
     | LogboekFormInternal msg ->
         let form, cmd = LogboekForm.update (LogboekFormReturn, LogboekFormInternal) msg model.LogboekForm
@@ -318,10 +291,10 @@ type Box =
         ]
 
 let algemeenAkkoord (model: Model) (dispatch: Msg -> unit) =
-    Box.withHeader (dispatch, title = "Welkom", nOutOfN = (1, 4), children = [
+    Box.withHeader (dispatch, title = "Welkom", nOutOfN = (1, 3), children = [
         Bulma.content [
-            Html.p "Iedereen maakt fouten. Dat is goed, want van fouten leer je. Maar zoals je misschien wel gemerkt hebt, kan een klein foutje bij het programmeren ervoor zorgen dat je helemaal vastloopt. Normaal gesproken zou je tijdens een les informatica dan je docent om hulp vragen, die je weer op weg helpt. Omdat jullie informatica volgen via Co-Teach, is dat helaas niet altijd mogelijk."
-            Html.p "Daarom onderzoeken wij hoe we jullie beter kunnen helpen met het oplossen van de fouten die je maakt bij het programmeren, ook zonder dat daar een docent bij nodig is. We willen weten op welke fouten jullie vastlopen en dus vragen we jullie om gedurende één les in dit logboek bij te houden welke programmeerfouten jullie tegenkomen."
+            Html.p "Iedereen maakt fouten. Dat is goed, want van fouten leer je. Maar zoals je misschien wel gemerkt hebt, kan een klein foutje bij het programmeren ervoor zorgen dat je helemaal vastloopt. Normaal gesproken zou je tijdens een les informatica dan je docent om hulp vragen, die je weer op weg helpt, maar er zijn ook scholen die informatica geven zonder dat ze een informaticadocent hebben."
+            Html.p "Daarom onderzoeken wij hoe we die leerlingen beter kunnen helpen met het oplossen van de fouten die ze maken bij het programmeren, ook zonder dat daar een docent bij nodig is. We willen weten op welke fouten jullie vastlopen en dus vragen we jullie om gedurende één les in dit logboek bij te houden welke programmeerfouten jullie tegenkomen. Je docent zal tijdens deze les geen vragen over programmeren beantwoorden, omdat we willen onderzoeken hoe jullie zelfstandig met fouten omgaan."
             Html.p [
                 Html.text "Het onderzoek wordt uitgevoerd door Arthur Rump van de faculteit Behavioural, Management and Social Sciences op de Universiteit Twente. Als je vragen hebt, kun je die stellen via "
                 Html.a [ color.hasTextLink; prop.href "mailto:a.h.j.rump@student.utwente.nl"; prop.text "a.h.j.rump@student.utwente.nl" ]
@@ -329,10 +302,9 @@ let algemeenAkkoord (model: Model) (dispatch: Msg -> unit) =
             ]
             Html.p "Dit moet je weten over dit logboek:"
             Html.ul [
-                Html.li "Alle gegevens worden versleuteld opgeslagen en alleen gebruikt voor dit onderzoek."
-                Html.li "Alle gegevens  worden anoniem verwerkt, tenzij dat bij een vraag anders vermeld is."
+                Html.li "Alle gegevens worden anoniem verwerkt en alleen gebruikt voor dit onderzoek."
                 Html.li [
-                    Html.text "Vanaf het starten van het logboek blijven de gegevens drie uur lang aan jouw computer gekoppeld. Daarna worden je antwoorden volledig geanonimiseerd en kunnen ze dus niet meer aan jou gelinkt worden."
+                    Html.text "Vanaf het starten van het logboek blijven de gegevens maximaal drie uur lang aan jouw computer gekoppeld. Daarna worden je antwoorden volledig geanonimiseerd en kunnen ze dus niet meer aan jou gelinkt worden."
                     Html.ul [
                         spacing.mt1
                         prop.children [
@@ -351,18 +323,13 @@ let algemeenAkkoord (model: Model) (dispatch: Msg -> unit) =
     ])
 
 let demografisch (model: Model) (dispatch: Msg -> unit) =
-    Box.withHeader (dispatch, title = "Over jou", nOutOfN = (2, 4), previousPage = Algemeen, children = [
+    Box.withHeader (dispatch, title = "Over jou", nOutOfN = (2, 3), previousPage = Algemeen, children = [
         DemografischForm.view (model.DemografischForm) (DemografischFormInternal >> dispatch)
-    ])
-
-let interview (model: Model) (dispatch: Msg -> unit) =
-    Box.withHeader (dispatch, title = "Interview?", nOutOfN = (3, 4), previousPage = Demografisch, children = [
-        InterviewForm.view (model.InterviewForm) (InterviewFormInternal >> dispatch)
     ])
 
 let logboek (model: Model) (dispatch: Msg -> unit) =
     Html.div [
-        Box.withHeader (dispatch, title = "Logboek", nOutOfN = (4, 4), previousPage = Interview, children = [
+        Box.withHeader (dispatch, title = "Logboek", nOutOfN = (3, 3), previousPage = Demografisch, children = [
             LogboekForm.view (model.LogboekForm) (LogboekFormInternal >> dispatch)
         ])
         Bulma.box [
@@ -458,8 +425,6 @@ let view (model: Model) (dispatch: Msg -> unit) =
                                 algemeenAkkoord model dispatch
                             | Demografisch ->
                                 demografisch model dispatch
-                            | Interview ->
-                                interview model dispatch
                             | Logboek ->
                                 logboek model dispatch
                             | Bedankt ->

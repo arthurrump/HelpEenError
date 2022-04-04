@@ -69,16 +69,6 @@ type Storage(conn: IDbConnection, ?tran: IDbTransaction) =
                 programmeervaardigheid INTEGER,
                 programmeerervaring INTEGER
             );
-            CREATE TABLE IF NOT EXISTS interviews (
-                id TEXT PRIMARY KEY,
-                schoolniveau TEXT NOT NULL,
-                programmeervaardigheid INTEGER NOT NULL,
-                programmeerervaring INTEGER NOT NULL,
-                naam TEXT NOT NULL,
-                klas TEXT NOT NULL,
-                school TEXT NOT NULL,
-                email TEXT NOT NULL
-            );
             CREATE TABLE IF NOT EXISTS logboek (
                 id TEXT PRIMARY KEY,
                 respondent_id TEXT NOT NULL REFERENCES respondenten(id) ON DELETE CASCADE,
@@ -107,28 +97,6 @@ type Storage(conn: IDbConnection, ?tran: IDbTransaction) =
     member __.DeleteRespondent (RespondentId id) =
         conn
         |> Db.newCommand "DELETE FROM respondenten WHERE id = @id"
-        |> Db.setParams [ "id", SqlType.String (id.ToString()) ]
-        |> dbExec
-
-    member __.AddOrReplaceInterview (InterviewId id, demografisch: Demografisch.Result, interview: Interview.Contact) =
-        conn
-        |> Db.newCommand """
-            INSERT OR REPLACE INTO interviews (id, schoolniveau, programmeervaardigheid, programmeerervaring, naam, klas, school, email)
-            VALUES (@id, @schoolniveau, @programmeervaardigheid, @programmeerervaring, @naam, @klas, @school, @email)"""
-        |> Db.setParams
-            [ "id", SqlType.String (id.ToString())
-              "schoolniveau", SqlType.String demografisch.Schoolniveau
-              "programmeervaardigheid", SqlType.Int demografisch.ProgrammeerVaardigheid
-              "programmeerervaring", SqlType.Int demografisch.ProgrammeerErvaring
-              "naam", SqlType.String interview.Naam
-              "klas", SqlType.String interview.Klas
-              "school", SqlType.String interview.School
-              "email", SqlType.String interview.Email ]
-        |> dbExec
-
-    member __.DeleteInterview (InterviewId id) =
-        conn
-        |> Db.newCommand "DELETE FROM interviews WHERE id = @id"
         |> Db.setParams [ "id", SqlType.String (id.ToString()) ]
         |> dbExec
 
@@ -181,41 +149,15 @@ let api (storage: Storage) =
         async {
             return Ok (RespondentId (Guid.NewGuid ()))
         }
-    let revokeToestemming (respondentId, interviewIdOpt) =
+    let revokeToestemming respondentId =
         async {
-            return storage.Transaction (fun storage ->
-                result {
-                    let! _ = storage.DeleteRespondent respondentId
-                    let! _ =
-                        match interviewIdOpt with
-                        | Some interviewId -> storage.DeleteInterview interviewId
-                        | None -> Ok ()
-                    return ()
-                })
+            return storage.DeleteRespondent respondentId
             |> Result.mapError dbErrorMessage
         }
     let submitDemografisch respondentId demografisch =
         async {
             return storage.AddOrReplaceRespondent (respondentId, demografisch)
             |> Result.mapError dbErrorMessage
-        }
-    let submitInterview interviewIdOpt (demografisch, interview) =
-        async {
-            return result {
-                match interviewIdOpt, interview with
-                | Some interviewId, Interview.Result.Ja contact ->
-                    do! storage.AddOrReplaceInterview (interviewId, demografisch, contact)
-                    return interviewId
-                | Some interviewId, Interview.Result.Nee ->
-                    do! storage.DeleteInterview interviewId
-                    return interviewId
-                | None, Interview.Result.Ja contact ->
-                    let interviewId = InterviewId (Guid.NewGuid())
-                    do! storage.AddOrReplaceInterview (interviewId, demografisch, contact)
-                    return interviewId
-                | None, Interview.Result.Nee ->
-                    return InterviewId (Guid.NewGuid())
-            } |> Result.mapError dbErrorMessage
         }
     let submitLog respondentId logboek =
         async {
@@ -233,7 +175,6 @@ let api (storage: Storage) =
     { grantToestemming = grantToestemming
       revokeToestemming = revokeToestemming
       submitDemografisch = submitDemografisch
-      submitInterview = submitInterview
       submitLog = submitLog
       deleteLog = deleteLog }
 
