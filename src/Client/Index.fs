@@ -401,7 +401,7 @@ let bedankt (model: Model) (dispatch: Msg -> unit) =
             Html.text "Bedankt voor je deelname aan dit onderzoek! Je antwoorden zijn anoniem opgeslagen en dus niet meer aan jou te koppelen. "
             Html.text "Als je nog vragen hebt over het onderzoek, kun je contact opnemen met Arthur Rump via "
             Html.a [ color.hasTextLink; prop.href "mailto:a.h.j.rump@student.utwente.nl"; prop.text "a.h.j.rump@student.utwente.nl" ]
-            Html.text ". Als je hebt aangegeven dat je mee wilt doen aan een interview, dan nemen we binnenkort contact met je op."
+            Html.text "."
         ]
     ])
 
