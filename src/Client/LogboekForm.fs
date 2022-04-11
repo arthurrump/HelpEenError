@@ -32,7 +32,7 @@ module Internal =
         let foutmeldingPlaceholders =
             [| "  File \"main.py\", line 1\n    print( 0 / 0 ))\n                  ^\nSyntaxError: invalid syntax"
                "Traceback (most recent call last):\n  File \"main.py\", line 2, in <module>\n    print(y)\nNameError: name 'y' is not defined"
-               "  File \"<stdin>\", line 1\n    x = 0, y = 0\n        ^\nSyntaxError: cannot assign to literal"
+               "  File \"main.py\", line 1\n    x = 0, y = 0\n        ^\nSyntaxError: cannot assign to literal"
                "  File \"main.py\", line 4\n    print(\"It's false!\")\n    ^\nIndentationError: expected an indented block"
                "Traceback (most recent call last):\n  File \"main.py\", line 2, in <module>\n    print(math.acos(\"1\"))\nTypeError: must be real number, not str"
                "Traceback (most recent call last):\n  File \"main.py\", line 1, in <module>\n    1/0\nZeroDivisionError: division by zero" |]
@@ -70,7 +70,7 @@ module Internal =
             Html.p [
                 Html.text "Op deze pagina kun je bijhouden welke fouten je tegenkomt tijdens deze les. Je hoeft alleen fouten toe te voegen "
                 Html.text "waarvan je niet direct weet wat je ermee moet doen. We kijken naar twee soorten fouten: je kunt een foutmelding krijgen "
-                Html.text "als Python vindt dat er iets niet klopt aan de code (te herkennen aan de rode tekst in de Console van Replit), "
+                Html.text "als Python vindt dat er iets niet klopt aan de code (te herkennen aan de rode tekst, bijvoorbeeld in de Console van Replit), "
                 Html.text "of het kan zijn dat je programma wel uitgevoerd wordt, maar niet doet wat de bedoeling was."
             ]
         ]
@@ -93,8 +93,8 @@ module Internal =
                     Html.p [
                         prop.className "is-size-7 mb-2"
                         prop.children [
-                            Html.text "Kopieer de foutmelding uit de Console van Replit en plak die hier. Let op: selecteer de foutmelding en "
-                            Html.text "gebruik de rechtermuisknop om te kopiëren. De sneltoets Ctrl+C werkt niet in de Console."
+                            Html.text "Kopieer de foutmelding en plak die hier. Gebruik je Replit? Let dan op: selecteer de foutmelding "
+                            Html.text "in de Console en gebruik de rechtermuisknop om te kopiëren. De sneltoets Ctrl+C werkt niet in de Console."
                         ]
                     ]
                 ])
