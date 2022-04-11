@@ -113,6 +113,12 @@ module Internal =
                 placeholder = "Bijvoorbeeld een klasgenoot om hulp vragen, de code nog eens rustig doorlezen, in Fundament opzoeken hoe de code eruit moet zien, ...",
                 field = form.Vervolgactie,
                 dispatch = (Vervolgactie >> dispatch))
+            Bulma.content [
+                Html.p [
+                    Html.text "Klik op de knop "; Html.i "Toevoegen"; Html.text " om deze fout toe te voegen aan het logboek. Daarna "
+                    Html.text "kun je deze vragen opnieuw beantwoorden bij de volgende fout die je tegenkomt."
+                ]
+            ]
     ]
 
 type Model = Form.Model<Internal.Model>
