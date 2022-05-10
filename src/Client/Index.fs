@@ -317,7 +317,7 @@ type Box =
         ]
 
 let algemeenAkkoord (model: Model) (dispatch: Msg -> unit) =
-    Box.withHeader (dispatch, title = "Welkom", nOutOfN = (1, 3), children = [
+    Box.withHeader (dispatch, title = "Welkom", nOutOfN = (1, 4), children = [
         Bulma.content [
             Html.p "Iedereen maakt fouten. Dat is goed, want van fouten leer je. Maar zoals je misschien wel gemerkt hebt, kan een klein foutje bij het programmeren ervoor zorgen dat je helemaal vastloopt. Normaal gesproken zou je tijdens een les informatica dan je docent om hulp vragen, die je weer op weg helpt, maar er zijn ook scholen die informatica geven zonder dat ze een informaticadocent hebben."
             Html.p "Daarom onderzoeken wij hoe we die leerlingen beter kunnen helpen met het oplossen van de fouten die ze maken bij het programmeren, ook zonder dat daar een docent bij nodig is. We willen weten op welke fouten jullie vastlopen en dus vragen we jullie om gedurende één les in dit logboek bij te houden welke programmeerfouten jullie tegenkomen. Je docent zal tijdens deze les geen vragen over programmeren beantwoorden, omdat we willen onderzoeken hoe jullie zelfstandig met fouten omgaan."
@@ -349,13 +349,13 @@ let algemeenAkkoord (model: Model) (dispatch: Msg -> unit) =
     ])
 
 let demografisch (model: Model) (dispatch: Msg -> unit) =
-    Box.withHeader (dispatch, title = "Over jou", nOutOfN = (2, 3), previousPage = Algemeen, children = [
+    Box.withHeader (dispatch, title = "Over jou", nOutOfN = (2, 4), previousPage = Algemeen, children = [
         DemografischForm.view (model.DemografischForm) (DemografischFormInternal >> dispatch)
     ])
 
 let logboek (model: Model) (dispatch: Msg -> unit) =
     Html.div [
-        Box.withHeader (dispatch, title = "Logboek", nOutOfN = (3, 3), previousPage = Demografisch, children = [
+        Box.withHeader (dispatch, title = "Logboek", nOutOfN = (3, 4), previousPage = Demografisch, children = [
             LogboekForm.view (model.LogboekForm) (LogboekFormInternal >> dispatch)
         ])
         Bulma.box [
