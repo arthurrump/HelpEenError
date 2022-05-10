@@ -75,6 +75,11 @@ module Internal =
                 Html.text "als Python vindt dat er iets niet klopt aan de code (te herkennen aan de rode tekst, bijvoorbeeld in de Console van Replit), "
                 Html.text "of het kan zijn dat je programma wel uitgevoerd wordt, maar niet doet wat de bedoeling was."
             ]
+            Html.p [
+                Html.text "Klik aan het eind van de les op de knop "
+                Html.em "Afsluiten"
+                Html.text " om de laatste vragen te beantwoorden en het logboek af te sluiten."
+            ]
         ]
         Form.UI.radio(
             title = "Wat gaat er mis?",
