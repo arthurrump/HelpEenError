@@ -13,6 +13,7 @@ type Page =
     | Algemeen
     | Demografisch
     | Logboek
+    | Afsluiting
     | Bedankt
 
 [<RequireQualifiedAccess>]
@@ -40,6 +41,7 @@ type Model =
       DemografischeGegevens: Demografisch.Result option
       LogboekForm: LogboekForm.Model
       Logboek: (LogId * LogState * Logboek.Result) list
+      AfsluitingForm: AfsluitingForm.Model
       Notifications: Notification list }
 
 type Msg =
@@ -52,6 +54,8 @@ type Msg =
     | LogboekFormReturn of LogboekForm.ReturnMsg<Msg>
     | LogboekDeleteEntry of LogId
     | LogboekDeleteEntryResponse of LogId * Result<unit, string>
+    | AfsluitingFormInternal of AfsluitingForm.Msg
+    | AfsluitingFormReturn of AfsluitingForm.ReturnMsg<Msg>
     | ShowNotification of NotificationType * message: string
     | DismissNotification of Guid
     | ExpireRegistration
@@ -83,6 +87,7 @@ let init (persisted: Model option) : Model * Cmd<Msg> =
           DemografischeGegevens = None
           LogboekForm = LogboekForm.init None
           Logboek = []
+          AfsluitingForm = AfsluitingForm.init None
           Notifications = [] }
         , Cmd.none
     | Some p ->
@@ -100,6 +105,7 @@ let init (persisted: Model option) : Model * Cmd<Msg> =
           DemografischeGegevens = p.DemografischeGegevens
           LogboekForm = LogboekForm.init (Some p.LogboekForm)
           Logboek = p.Logboek |> List.map (fun (id, _, log) -> (id, LogState.Normal, log))
+          AfsluitingForm = AfsluitingForm.init (Some p.AfsluitingForm)
           Notifications = [] }
         , cmd
 
@@ -177,7 +183,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
                 ToestemmingForm = ToestemmingForm.init None },
             Cmd.ofMsg (ShowNotification (NotificationType.Error, "Je hebt nog geen toestemming gegeven, of je sessie is verlopen."))
     | LogboekFormReturn Form.Next ->
-        model, Cmd.none
+        { model with CurrentPage = Afsluiting }, Cmd.none
     | LogboekFormReturn (Form.Submitted (result, logId)) ->
         { model with
             Logboek = (logId, LogState.Normal, result) :: model.Logboek
@@ -212,6 +218,26 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
                         if id = logId
                         then (id, LogState.DeletingError msg, log)
                         else (id, state, log)) }, Cmd.none
+
+    | AfsluitingFormInternal msg ->
+        let form, cmd = AfsluitingForm.update (AfsluitingFormReturn, AfsluitingFormInternal) msg model.AfsluitingForm
+        { model with AfsluitingForm = form }, cmd
+    | AfsluitingFormReturn (Form.Submit (result, onResponse)) ->
+        match model.RespondentId with
+        | Some respondentId ->
+            model, Cmd.OfAsync.either (api.submitAfsluiting respondentId) result
+                onResponse
+                (fun ex -> onResponse (Error ex.Message))
+        | None ->
+            { model with
+                CurrentPage = Algemeen
+                ToestemmingForm = ToestemmingForm.init None },
+            Cmd.ofMsg (ShowNotification (NotificationType.Error, "Je hebt nog geen toestemming gegeven, of je sessie is verlopen."))
+    | AfsluitingFormReturn Form.Next ->
+        let model, cmd = init None
+        { model with CurrentPage = Bedankt }, cmd
+    | AfsluitingFormReturn (Form.Submitted (result, _)) ->
+        model, Cmd.none
 
     | ShowNotification (type', msg) ->
         let guid = Guid.NewGuid ()
@@ -304,7 +330,7 @@ let algemeenAkkoord (model: Model) (dispatch: Msg -> unit) =
             Html.ul [
                 Html.li "Alle gegevens worden anoniem verwerkt en alleen gebruikt voor dit onderzoek."
                 Html.li [
-                    Html.text "Vanaf het starten van het logboek blijven de gegevens maximaal drie uur lang aan jouw computer gekoppeld. Daarna worden je antwoorden volledig geanonimiseerd en kunnen ze dus niet meer aan jou gelinkt worden."
+                    Html.text "Vanaf het starten van het logboek blijven de gegevens maximaal drie uur lang aan jouw computer gekoppeld, of totdat je het logboek afsluit. Daarna worden je antwoorden volledig geanonimiseerd en kunnen ze dus niet meer aan jou gelinkt worden."
                     Html.ul [
                         spacing.mt1
                         prop.children [
@@ -395,6 +421,11 @@ let logboek (model: Model) (dispatch: Msg -> unit) =
         ]
     ]
 
+let afsluiting (model: Model) (dispatch: Msg -> unit) =
+    Box.withHeader (dispatch, title = "Afsluiting", nOutOfN = (4, 4), previousPage = Logboek, children = [
+        AfsluitingForm.view (model.AfsluitingForm) (AfsluitingFormInternal >> dispatch)
+    ])
+
 let bedankt (model: Model) (dispatch: Msg -> unit) =
     Box.withHeader (dispatch, title = "Bedankt", previousPage = Algemeen, children = [
         Html.p [
@@ -427,6 +458,8 @@ let view (model: Model) (dispatch: Msg -> unit) =
                                 demografisch model dispatch
                             | Logboek ->
                                 logboek model dispatch
+                            | Afsluiting ->
+                                afsluiting model dispatch
                             | Bedankt ->
                                 bedankt model dispatch
 

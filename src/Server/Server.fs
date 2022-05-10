@@ -79,6 +79,12 @@ type Storage(conn: IDbConnection, ?tran: IDbTransaction) =
                 CONSTRAINT fout_beschrijving_and_verwachting CHECK ((beschrijving NOT NULL) = (verwachting NOT NULL)),
                 CONSTRAINT fout_xor_foutmelding CHECK ((foutmelding NOT NULL) <> (beschrijving NOT NULL))
             );
+            CREATE TABLE IF NOT EXISTS afsluiting (
+                respondent_id TEXT PRIMARY KEY REFERENCES respondenten(id) ON DELETE CASCADE,
+                opgelostvanlogboek INTEGER,
+                opgelostinvergelijking INTEGER,
+                tijdbesteed INTEGER
+            );
         """
         conn |> Db.newCommand cmd |> dbExec
 
@@ -129,6 +135,18 @@ type Storage(conn: IDbConnection, ?tran: IDbTransaction) =
               "respondent_id", SqlType.String (respondentId.ToString()) ]
         |> dbExec
 
+    member __.AddOrReplaceAfsluiting (RespondentId id, afsluiting: Afsluiting.Result) =
+        conn
+        |> Db.newCommand """
+            INSERT OR REPLACE INTO afsluiting (respondent_id, opgelostvanlogboek, opgelostinvergelijking, tijdbesteed)
+            VALUES (@respondent_id, @opgelostvanlogboek, @opgelostinvergelijking, @tijdbesteed)"""
+        |> Db.setParams
+            [ "respondent_id", SqlType.String (id.ToString())
+              "opgelostvanlogboek", SqlType.Int afsluiting.OpgelostVanLogboek
+              "opgelostinvergelijking", SqlType.Int afsluiting.OpgelostInVergelijking
+              "tijdbesteed", SqlType.Int afsluiting.TijdBesteed ]
+        |> dbExec
+
     interface IDisposable with
         member __.Dispose() =
             conn.Close()
@@ -172,11 +190,17 @@ let api (storage: Storage) =
             return storage.DeleteLog (logId, respondentId)
             |> Result.mapError dbErrorMessage
         }
+    let submitAfsluiting respondentId afsluiting =
+        async {
+            return storage.AddOrReplaceAfsluiting (respondentId, afsluiting)
+            |> Result.mapError dbErrorMessage
+        }
     { grantToestemming = grantToestemming
       revokeToestemming = revokeToestemming
       submitDemografisch = submitDemografisch
       submitLog = submitLog
-      deleteLog = deleteLog }
+      deleteLog = deleteLog
+      submitAfsluiting = submitAfsluiting }
 
 let config =
     let iconfig =

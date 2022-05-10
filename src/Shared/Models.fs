@@ -163,3 +163,63 @@ module Logboek =
                 OnverwachtGedragBeschrijving = Field.update config.OnverwachtGedragBeschrijving Field.Validate form.OnverwachtGedragBeschrijving
                 OnverwachtGedragVerwachting = Field.update config.OnverwachtGedragVerwachting Field.Validate form.OnverwachtGedragVerwachting
                 Vervolgactie = Field.update config.Vervolgactie Field.Validate form.Vervolgactie }
+
+module Afsluiting =
+    type FormConfig =
+        { OpgelostVanLogboek: FieldConfig<int, int>
+          OpgelostInVergelijking: FieldConfig<int, int>
+          TijdBesteed: FieldConfig<int, int> }
+
+    type Form =
+        { OpgelostVanLogboek: Field<int>
+          OpgelostInVergelijking: Field<int>
+          TijdBesteed: Field<int> }
+
+    type Result =
+        { OpgelostVanLogboek: int
+          OpgelostInVergelijking: int
+          TijdBesteed: int }
+
+    [<RequireQualifiedAccess>]
+    module Validate =
+        let form (c: FormConfig) (m: Form) =
+            validate {
+                let! ol = Field.validate c.OpgelostVanLogboek m.OpgelostVanLogboek
+                and! ov = Field.validate c.OpgelostInVergelijking m.OpgelostInVergelijking
+                and! tb = Field.validate c.TijdBesteed m.TijdBesteed
+                return
+                    { OpgelostVanLogboek = ol
+                      OpgelostInVergelijking = ov
+                      TijdBesteed = tb }
+            }
+        let result (m: Result) =
+            validate {
+                let! ol = Validators.NL.likert "Aandeel opgeloste fouten in het logboek" m.OpgelostVanLogboek
+                and! ov = Validators.NL.likert "Hoeveelheid opgeloste fouten in vergelijking" m.OpgelostInVergelijking
+                and! tb = Validators.NL.likert "Hoeveelheid tijd besteed aan fouten" m.TijdBesteed
+                return
+                    { OpgelostVanLogboek = ol
+                      OpgelostInVergelijking = ov
+                      TijdBesteed = tb }
+            }
+
+    [<RequireQualifiedAccess>]
+    module Form =
+        let config () : FormConfig =
+            { OpgelostVanLogboek =
+                Field.config ("Aandeel opgeloste fouten in het logboek", Validators.NL.required Validators.NL.likert)
+              OpgelostInVergelijking =
+                Field.config ("Hoeveelheid opgeloste fouten in vergelijking", Validators.NL.required Validators.NL.likert)
+              TijdBesteed =
+                Field.config ("Hoeveelheid tijd besteed aan fouten", Validators.NL.required Validators.NL.likert) }
+
+        let init () : Form =
+            { OpgelostVanLogboek = Field.init ()
+              OpgelostInVergelijking = Field.init ()
+              TijdBesteed = Field.init () }
+
+        let validateAll (config: FormConfig) (form: Form) =
+            { form with
+                OpgelostVanLogboek = Field.update config.OpgelostVanLogboek Field.Validate form.OpgelostVanLogboek
+                OpgelostInVergelijking = Field.update config.OpgelostInVergelijking Field.Validate form.OpgelostInVergelijking
+                TijdBesteed = Field.update config.TijdBesteed Field.Validate form.TijdBesteed }

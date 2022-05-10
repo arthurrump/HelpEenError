@@ -16,4 +16,5 @@ type ILogboekApi =
       revokeToestemming: RespondentId -> Async<Result<unit, string>>
       submitDemografisch: RespondentId -> Demografisch.Result -> Async<Result<unit, string>>
       submitLog: RespondentId -> Logboek.Result -> Async<Result<LogId, string>>
-      deleteLog: (RespondentId * LogId) -> Async<Result<unit, string>> }
+      deleteLog: (RespondentId * LogId) -> Async<Result<unit, string>>
+      submitAfsluiting: RespondentId -> Afsluiting.Result -> Async<Result<unit, string>> }
