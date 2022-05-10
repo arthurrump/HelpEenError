@@ -22,10 +22,12 @@ module Internal =
     let form =
         { SubmitButton = "Opslaan"
           NextButton = Some "Verder"
+          CanCombineSubmitNext = true
           CancelButton = Some "Annuleren"
           Update = update
           Validate = fun fields -> Ok fields.Akkoord
-          ValidateAllFields = id }
+          ValidateAllFields = id
+          InitFields = init }
 
     let view fields dispatch = [
         Bulma.field.div [
@@ -48,7 +50,7 @@ type Msg = Form.Msg<Internal.Msg, bool, Result>
 type ReturnMsg<'msg> = Form.ReturnMsg<bool, Result, 'msg>
 
 let init persisted : Model =
-    Form.init Internal.init persisted
+    Form.init Internal.form persisted
 
 let update (returnMsg, formMsg) (msg: Msg) (model: Model) =
     Form.update Internal.form returnMsg formMsg msg model

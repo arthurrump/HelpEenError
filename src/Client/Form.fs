@@ -10,10 +10,12 @@ open Shared.Form
 type Form<'fields, 'fieldsMsg, 'result, 'response> =
     { SubmitButton: string
       NextButton: string option
+      CanCombineSubmitNext: bool
       CancelButton: string option
       Update: 'fieldsMsg -> 'fields -> 'fields
       Validate: 'fields -> Result<'result, ValidationErrors>
-      ValidateAllFields: 'fields -> 'fields }
+      ValidateAllFields: 'fields -> 'fields
+      InitFields: unit -> 'fields }
 
 module Form =
     type Model<'fields> =
@@ -38,13 +40,13 @@ module Form =
         | Submitted of 'result * 'response
         | Next
 
-    let init initFields persisted =
+    let init form persisted =
         match persisted with
         | None ->
-            { Fields = initFields ()
+            { Fields = form.InitFields ()
               OldFields = None
               Errors = []
-              CombineSubmitNext = true
+              CombineSubmitNext = form.CanCombineSubmitNext
               IsDirty = false
               IsSubmitting = false
               IsSubmitDisabled = false }

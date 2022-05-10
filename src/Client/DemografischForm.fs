@@ -32,10 +32,12 @@ module Internal =
     let form =
         { SubmitButton = "Opslaan"
           NextButton = Some "Verder"
+          CanCombineSubmitNext = true
           CancelButton = Some "Annuleren"
           Update = update
           Validate = Demografisch.Validate.form config
-          ValidateAllFields = Demografisch.Form.validateAll config }
+          ValidateAllFields = Demografisch.Form.validateAll config
+          InitFields = init }
 
     let view (model: Model) (dispatch: Msg -> unit) = [
         Bulma.content [
@@ -68,7 +70,7 @@ type Msg = Form.Msg<Internal.Msg, Demografisch.Result, unit>
 type ReturnMsg<'msg> = Form.ReturnMsg<Demografisch.Result, unit, 'msg>
 
 let init persisted : Model =
-    Form.init Internal.init persisted
+    Form.init Internal.form persisted
 
 let update (returnMsg, formMsg) (msg: Msg) (model: Model) =
     Form.update Internal.form returnMsg formMsg msg model

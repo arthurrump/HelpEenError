@@ -58,11 +58,13 @@ module Internal =
 
     let form =
         { SubmitButton = "Toevoegen"
-          NextButton = None
+          NextButton = Some "Afsluiten"
+          CanCombineSubmitNext = false
           CancelButton = Some "Annuleren"
           Update = update
           Validate = Model.getForm >> Logboek.Validate.form config
-          ValidateAllFields = Model.updateForm (Logboek.Form.validateAll config) }
+          ValidateAllFields = Model.updateForm (Logboek.Form.validateAll config)
+          InitFields = init }
 
     let view (model: Model) (dispatch: Msg -> unit) = [
         let form = model.Form
@@ -126,7 +128,7 @@ type Msg = Form.Msg<Internal.Msg, Logboek.Result, LogId>
 type ReturnMsg<'msg> = Form.ReturnMsg<Logboek.Result, LogId, 'msg>
 
 let init persisted : Model =
-    Form.init Internal.init persisted
+    Form.init Internal.form persisted
 
 let update (returnMsg, formMsg) (msg: Msg) (model: Model) =
     Form.update Internal.form returnMsg formMsg msg model
