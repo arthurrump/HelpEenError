@@ -1,0 +1,16 @@
+# See docs at: https://mystmd.org/guide/frontmatter
+version: 1
+project:
+  id: 32fdfcf2-dc28-49c9-a5fe-f4c95893d6d2
+  copyright: © 2024 Arthur Rump
+  license: CC-BY-SA-4.0
+  github: https://github.com/arthurrump/HelpEenError
+  jupyter:
+    # Lite doesn't work well with input yet and the "Launch in Jupyter" function doesn't work either
+    # lite: true
+    binder: true
+site:
+  template: book-theme
+  title: Help een error!
+  options:
+    logo_text: Help een error!
